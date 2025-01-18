@@ -1,8 +1,7 @@
-// game.js
-
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
+// Keep logical (internal) resolution at 800×600
 canvas.width = 800;
 canvas.height = 600;
 
@@ -12,7 +11,6 @@ backgroundMusic.loop = true;
 backgroundMusic.volume = 0.3;
 
 // 2) CREATE “YUMMY” SOUND EFFECT
-// Use your own link or local file here
 const yummySound = new Audio("./yummy.mp3");
 yummySound.volume = 1.0; // full volume (adjust as needed)
 
@@ -20,10 +18,10 @@ yummySound.volume = 1.0; // full volume (adjust as needed)
 const backgroundImage = new Image();
 backgroundImage.src = "./fong_bong_pizza_man.webp";
 backgroundImage.onload = () => {
-    console.log("Background image loaded successfully.");
+  console.log("Background image loaded successfully.");
 };
 backgroundImage.onerror = () => {
-    console.error("Failed to load the background image.");
+  console.error("Failed to load the background image.");
 };
 
 // Off-screen canvas for transparency
@@ -38,11 +36,11 @@ playerImage.src = "https://banner2.cleanpng.com/20180217/zjw/av14rma49.webp";
 
 // Player object
 let player = {
-    x: canvas.width / 2 - 50,
-    y: canvas.height - 150,
-    width: 100,
-    height: 150,
-    speed: 30,
+  x: canvas.width / 2 - 50,
+  y: canvas.height - 150,
+  width: 100,
+  height: 150,
+  speed: 30,
 };
 
 let pizzas = [];
@@ -51,163 +49,172 @@ let gameOver = false;
 
 // Load pizza image
 const pizzaImage = new Image();
-pizzaImage.src =
-    "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
+pizzaImage.src = "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
 
 // Create a new pizza
 function createPizza() {
-    const size = 40;
-    pizzas.push({
-        x: Math.random() * (canvas.width - size),
-        y: 0,
-        width: size,
-        height: size,
-        speed: 1.5 + Math.random(),
-    });
+  const size = 40;
+  pizzas.push({
+    x: Math.random() * (canvas.width - size),
+    y: 0,
+    width: size,
+    height: size,
+    speed: 1.5 + Math.random(),
+  });
 }
 
 // Draw the background with transparency
 function drawBackground() {
-    if (backgroundImage.complete) {
-        // Clear the temp canvas each frame
-        tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
+  if (backgroundImage.complete) {
+    // Clear the temp canvas each frame
+    tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
 
-        // Draw background image at 60% opacity onto temp canvas
-        tempCtx.globalAlpha = 0.6;
-        tempCtx.drawImage(backgroundImage, 0, 0, tempCanvas.width, tempCanvas.height);
-        tempCtx.globalAlpha = 1; // reset alpha on temp context
+    // Draw background image at 60% opacity onto temp canvas
+    tempCtx.globalAlpha = 0.6;
+    tempCtx.drawImage(backgroundImage, 0, 0, tempCanvas.width, tempCanvas.height);
+    tempCtx.globalAlpha = 1; // reset alpha
 
-        // Now draw temp canvas onto the main canvas
-        ctx.drawImage(tempCanvas, 0, 0);
-    }
+    // Now draw temp canvas onto the main canvas
+    ctx.drawImage(tempCanvas, 0, 0);
+  }
 }
 
 // Draw the player
 function drawPlayer() {
-    ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
+  ctx.drawImage(playerImage, player.x, player.y, player.width, player.height);
 }
 
 // Draw pizzas
 function drawPizzas() {
-    pizzas.forEach((pizza) => {
-        ctx.drawImage(pizzaImage, pizza.x, pizza.y, pizza.width, pizza.height);
-    });
+  pizzas.forEach((pizza) => {
+    ctx.drawImage(pizzaImage, pizza.x, pizza.y, pizza.width, pizza.height);
+  });
 }
 
 // Update game state
 function update() {
-    if (gameOver) return;
+  if (gameOver) return;
 
-    pizzas.forEach((pizza, index) => {
-        pizza.y += pizza.speed;
+  pizzas.forEach((pizza, index) => {
+    pizza.y += pizza.speed;
 
-        // Check if pizza is caught
-        if (
-            pizza.y + pizza.height >= player.y &&
-            pizza.x + pizza.width >= player.x &&
-            pizza.x <= player.x + player.width
-        ) {
-            score++;
-            pizzas.splice(index, 1);
+    // Check if pizza is caught
+    if (
+      pizza.y + pizza.height >= player.y &&
+      pizza.x + pizza.width >= player.x &&
+      pizza.x <= player.x + player.width
+    ) {
+      score++;
+      pizzas.splice(index, 1);
 
-            // Make the player 5 pixels wider
-            player.width += 5;
+      // Make the player 5 pixels wider
+      player.width += 5;
+      // Keep the player within bounds
+      if (player.x + player.width > canvas.width) {
+        player.x = canvas.width - player.width;
+      }
 
-            // Keep the player within bounds
-            if (player.x + player.width > canvas.width) {
-                player.x = canvas.width - player.width;
-            }
+      // Play the "Yummy!" sound (overlapping if multiple catches)
+      const newSound = yummySound.cloneNode(true);
+      newSound.volume = yummySound.volume;
+      newSound.play().catch(err => {
+        console.warn("Could not play yummy sound:", err);
+      });
+    }
 
-            // // 3) PLAY THE "YUMMY" SOUND WHEN PIZZA IS EATEN
-            // yummySound.play().catch(err => {
-            //     console.warn("Yummy sound was prevented:", err);
-            // });
-
-            const newSound = yummySound.cloneNode(true);
-
-            // Copy settings if needed
-            newSound.volume = yummySound.volume;
-
-            // Play the cloned sound
-            newSound.play().catch(err => {
-                console.warn("Could not play yummy sound:", err);
-            });
-        }
-
-        // End game if pizza hits the ground
-        if (pizza.y > canvas.height) {
-            gameOver = true;
-        }
-    });
+    // End game if pizza hits the ground
+    if (pizza.y > canvas.height) {
+      gameOver = true;
+    }
+  });
 }
 
 // Draw game elements
 function draw() {
-    // Always clear the main canvas each frame
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    drawBackground(); // Draw your partially transparent background first
+  drawBackground();
 
-    // Draw game title
+  // Draw game title
+  ctx.fillStyle = "#fff";
+  ctx.font = "30px Arial";
+  ctx.fillText("Fong Bong Pizza Man", canvas.width / 2 - 150, 40);
+
+  // Draw score
+  ctx.fillStyle = "#fff";
+  ctx.font = "20px Arial";
+  ctx.fillText(`Score: ${score}`, 10, 30);
+
+  drawPlayer();
+  drawPizzas();
+
+  // Display game over message
+  if (gameOver) {
     ctx.fillStyle = "#fff";
-    ctx.font = "30px Arial";
-    ctx.fillText("Fong Bong Pizza Man", canvas.width / 2 - 150, 40);
-
-    // Draw score
-    ctx.fillStyle = "#fff";
-    ctx.font = "20px Arial";
-    ctx.fillText(`Score: ${score}`, 10, 30);
-
-    drawPlayer();
-    drawPizzas();
-
-    // Display game over message
-    if (gameOver) {
-        ctx.fillStyle = "#fff";
-        ctx.font = "40px Arial";
-        ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
-        
-        // Optional: Stop music on game over
-        // backgroundMusic.pause();
-    }
+    ctx.font = "40px Arial";
+    ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
+  }
 }
 
 // Move player
 function movePlayer(direction) {
-    if (direction === "left" && player.x > 0) {
-        player.x -= player.speed;
-    } else if (direction === "right" && player.x + player.width < canvas.width) {
-        player.x += player.speed;
-    }
+  if (direction === "left" && player.x > 0) {
+    player.x -= player.speed;
+  } else if (direction === "right" && player.x + player.width < canvas.width) {
+    player.x += player.speed;
+  }
 }
 
 // 4) START BACKGROUND MUSIC ON FIRST KEY PRESS
 document.addEventListener("keydown", (e) => {
-    // If music is paused, try playing it. This ensures user interaction to bypass autoplay restrictions.
-    if (backgroundMusic.paused) {
-        backgroundMusic.play().catch(err => {
-            console.warn("Audio play was prevented by the browser:", err);
-        });
-    }
+  // If music is paused, try playing it.
+  if (backgroundMusic.paused) {
+    backgroundMusic.play().catch(err => {
+      console.warn("Audio play was prevented:", err);
+    });
+  }
 
-    if (e.key === "ArrowLeft") {
-        movePlayer("left");
-    } else if (e.key === "ArrowRight") {
-        movePlayer("right");
-    }
+  if (e.key === "ArrowLeft") {
+    movePlayer("left");
+  } else if (e.key === "ArrowRight") {
+    movePlayer("right");
+  }
+});
+
+// ----- OPTIONAL MOBILE TOUCH INPUT -----
+// If user taps left half => move left, right half => move right.
+canvas.addEventListener("touchstart", (e) => {
+  // If music is paused, try playing it on first touch
+  if (backgroundMusic.paused) {
+    backgroundMusic.play().catch(err => {
+      console.warn("Audio play was prevented:", err);
+    });
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  const touch = e.touches[0];
+  // Convert touch coordinates to canvas space
+  const touchX = touch.clientX - rect.left;
+
+  // If touch is in left half of the canvas, move left; else move right.
+  if (touchX < canvas.width / 2) {
+    movePlayer("left");
+  } else {
+    movePlayer("right");
+  }
 });
 
 // Main game loop
 function gameLoop() {
-    update();
-    draw();
-    if (!gameOver) {
-        requestAnimationFrame(gameLoop);
-    }
+  update();
+  draw();
+  if (!gameOver) {
+    requestAnimationFrame(gameLoop);
+  }
 }
 
 // Spawn pizzas at intervals
 setInterval(createPizza, 1000);
 
-// Start the game (rendering + logic). Music will wait for first key press to play.
+// Start the game loop (renders + logic). Music & movement will start on user input.
 gameLoop();
