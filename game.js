@@ -165,7 +165,7 @@ function movePlayer(direction) {
   }
 }
 
-// 4) START BACKGROUND MUSIC ON FIRST KEY PRESS
+// START BACKGROUND MUSIC ON FIRST KEY PRESS
 document.addEventListener("keydown", (e) => {
   // If music is paused, try playing it.
   if (backgroundMusic.paused) {
@@ -181,9 +181,9 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// ----- OPTIONAL MOBILE TOUCH INPUT -----
+// ----- MOBILE TOUCH INPUT -----
 // If user taps left half => move left, right half => move right.
-canvas.addEventListener("touchstart", (e) => {
+canvas.addEventListener("touchstart", function(e) {
   // If music is paused, try playing it on first touch
   if (backgroundMusic.paused) {
     backgroundMusic.play().catch(err => {
@@ -191,18 +191,28 @@ canvas.addEventListener("touchstart", (e) => {
     });
   }
 
+  // Prevent default so iOS Safari doesn’t treat it as a scroll
+  e.preventDefault();
+
   const rect = canvas.getBoundingClientRect();
   const touch = e.touches[0];
-  // Convert touch coordinates to canvas space
-  const touchX = touch.clientX - rect.left;
 
-  // If touch is in left half of the canvas, move left; else move right.
+  // Because the canvas is visually scaled to fill the screen,
+  // we must convert the touch coordinates to our internal 800×600 space.
+  const scaleX = canvas.width / rect.width;   // ratio of internal width to display width
+  const scaleY = canvas.height / rect.height; // ratio of internal height to display height
+
+  // Calculate the internal coordinates
+  const touchX = (touch.clientX - rect.left) * scaleX;
+  // const touchY = (touch.clientY - rect.top) * scaleY; // if needed
+
+  // Simple logic: left half => "left", right half => "right"
   if (touchX < canvas.width / 2) {
     movePlayer("left");
   } else {
     movePlayer("right");
   }
-});
+}, { passive: false }); // { passive: false } so we can call e.preventDefault()
 
 // Main game loop
 function gameLoop() {
