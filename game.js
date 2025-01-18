@@ -1,15 +1,14 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.1";
+let version = "v1.0.4";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const restartBtn = document.getElementById("restartButton");
 
-// Keep internal resolution 800x600
 canvas.width = 800;
 canvas.height = 600;
 
-/* Letterbox resizing: keep 4:3 aspect ratio so no sides get cut off. */
+/* Letterbox resizing */
 function resizeCanvas() {
   const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
@@ -18,23 +17,19 @@ function resizeCanvas() {
 
   let finalWidth, finalHeight;
   if (windowAspect < targetAspect) {
-    // Window is relatively tall/narrow -> match full width, reduce height
     finalWidth = windowWidth;
     finalHeight = windowWidth / targetAspect;
   } else {
-    // Window is relatively wide -> match full height, reduce width
     finalHeight = windowHeight;
     finalWidth = windowHeight * targetAspect;
   }
 
-  // Center the canvas in the window
   canvas.style.width = finalWidth + "px";
   canvas.style.height = finalHeight + "px";
   canvas.style.left = (windowWidth - finalWidth) / 2 + "px";
   canvas.style.top = (windowHeight - finalHeight) / 2 + "px";
 }
 
-// Listen to resizing
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
 resizeCanvas();
@@ -46,9 +41,17 @@ const backgroundMusic = new Audio(
 backgroundMusic.loop = true;
 backgroundMusic.volume = 0.3;
 
-// YUMMY SOUND
+// YUMMY SOUND (pizza)
 const yummySound = new Audio("./yummy.mp3");
 yummySound.volume = 1.0;
+
+// WEIGHT SOUND
+const weightSound = new Audio("./weightlifting.mp3");
+weightSound.volume = 1.0;
+
+// 2) GAME OVER SOUND
+const gameOverSound = new Audio("./game_over.mp3");
+gameOverSound.volume = 1.0;
 
 // Load background image
 const backgroundImage = new Image();
@@ -80,8 +83,8 @@ let player = {
 };
 
 // Health logic
-let health = 5;      // Start with 5 HP
-const maxHealth = 10;
+let health = 2;
+const maxHealth = 4;
 
 // Pizzas array
 let pizzas = [];
@@ -90,9 +93,17 @@ let gameOver = false;
 
 // Load pizza image
 const pizzaImage = new Image();
-pizzaImage.src = "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
+pizzaImage.src =
+  "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
 
-// Create a new pizza
+// Load weight image
+const weightImage = new Image();
+weightImage.src = "./weightlifting.png";
+
+// Array to store weights
+let weights = [];
+
+/** Create a new pizza */
 function createPizza() {
   const size = 40;
   pizzas.push({
@@ -104,7 +115,19 @@ function createPizza() {
   });
 }
 
-// Draw the background with transparency
+/** Create a new weight item */
+function createWeight() {
+  const size = 40;
+  weights.push({
+    x: Math.random() * (canvas.width - size),
+    y: 0,
+    width: size,
+    height: size,
+    speed: 1.5 + Math.random(),
+  });
+}
+
+// Draw background
 function drawBackground() {
   if (backgroundImage.complete) {
     tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
@@ -133,10 +156,18 @@ function drawPizzas() {
   });
 }
 
+// Draw weights
+function drawWeights() {
+  weights.forEach((weight) => {
+    ctx.drawImage(weightImage, weight.x, weight.y, weight.width, weight.height);
+  });
+}
+
 // Update game state
 function update() {
   if (gameOver) return;
 
+  // Update pizzas
   pizzas.forEach((pizza, index) => {
     pizza.y += pizza.speed;
 
@@ -150,37 +181,67 @@ function update() {
       score++;
       pizzas.splice(index, 1);
 
-      // Make the player 5 pixels wider
+      // Make the player 5px wider
       player.width += 5;
       if (player.x + player.width > canvas.width) {
         player.x = canvas.width - player.width;
       }
 
-      // Increase health by 1 (up to max)
+      // Increase health by 1 (max 10)
       if (health < maxHealth) {
         health++;
       }
 
       // "Yummy!" sound
       const newSound = yummySound.cloneNode(true);
-      newSound.volume = yummySound.volume;
       newSound.play().catch((err) => {
         console.warn("Could not play yummy sound:", err);
       });
-    }
-    // If pizza goes off the screen, we lose health
-    else if (pizza.y > canvas.height) {
+    } else if (pizza.y > canvas.height) {
+      // Missed pizza => lose 1 health
       pizzas.splice(index, 1);
       health--;
-      // If health hits 0, gameOver
-      if (health <= 0) {
+      if (health <= 0 && !gameOver) {
+        // 3) SET GAME OVER + PLAY SOUND ONCE
         gameOver = true;
+        playGameOverSound();
       }
+    }
+  });
+
+  // Update weights
+  weights.forEach((weight, wIndex) => {
+    weight.y += weight.speed;
+
+    // Check collision with player
+    const caughtWeight =
+      weight.y + weight.height >= player.y &&
+      weight.x + weight.width >= player.x &&
+      weight.x <= player.x + player.width;
+
+    if (caughtWeight) {
+      // Remove weight
+      weights.splice(wIndex, 1);
+
+      // Shrink player by 10px
+      player.width -= 10;
+      if (player.width < 10) {
+        player.width = 10;
+      }
+
+      // Weight sound
+      const newWeightSound = weightSound.cloneNode(true);
+      newWeightSound.play().catch((err) => {
+        console.warn("Could not play weight sound:", err);
+      });
+    } else if (weight.y > canvas.height) {
+      // Weight hits ground => remove it
+      weights.splice(wIndex, 1);
     }
   });
 }
 
-// Draw game elements
+/** Draw everything */
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -196,52 +257,42 @@ function draw() {
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
 
-  // Draw player & pizzas
+  // Draw player & items
   drawPlayer();
   drawPizzas();
+  drawWeights();
 
-  // Draw health orb in bottom-left corner
+  // Draw health orb
   drawHealthOrb();
 
-  // If game over, show message + restart
+  // Game Over?
   if (gameOver) {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
     ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
-
-    // Show restart button
     restartBtn.style.display = "block";
   }
 
-  // Version number in bottom-left (below the orb)
+  // Version in bottom-left
   ctx.fillStyle = "#fff";
   ctx.font = "14px Arial";
   ctx.fillText(`Version: ${version}`, 10, canvas.height - 10);
 }
 
-/**
- * Draws a red circular “orb” that’s filled to reflect the current health %.
- * Example: If health=5 and maxHealth=10 => orb is half filled.
- */
+// Helper for drawing the health orb
 function drawHealthOrb() {
-  // orb center near bottom-left, radius 40, for instance
   const orbX = 70;
   const orbY = canvas.height - 70;
   const radius = 40;
 
-  // Outer circle (gray background or black behind the fill)
+  // background circle
   ctx.beginPath();
   ctx.arc(orbX, orbY, radius, 0, 2 * Math.PI);
-  ctx.fillStyle = "#333"; // background color of orb
+  ctx.fillStyle = "#333";
   ctx.fill();
 
-  // Now fill a portion in red, from 0 (top) downward
-  // Approach: we can use a “clip” or draw an arc fraction.
-  // Let’s do a circle sector from the top around to some fraction:
-  const fillPercent = health / maxHealth; // 0..1
-
-  // We'll do a “pie slice” from -90 degrees to some fraction
-  const startAngle = -Math.PI / 2; // top
+  const fillPercent = health / maxHealth;
+  const startAngle = -Math.PI / 2;
   const endAngle = startAngle + fillPercent * 2 * Math.PI;
 
   ctx.beginPath();
@@ -251,12 +302,20 @@ function drawHealthOrb() {
   ctx.fillStyle = "red";
   ctx.fill();
 
-  // Optionally, you can add a border/stroke
+  // border
   ctx.beginPath();
   ctx.arc(orbX, orbY, radius, 0, 2 * Math.PI);
   ctx.strokeStyle = "#fff";
   ctx.lineWidth = 2;
   ctx.stroke();
+}
+
+/** Play the game over sound once */
+function playGameOverSound() {
+  const newGameOverSound = gameOverSound.cloneNode(true);
+  newGameOverSound.play().catch((err) => {
+    console.warn("Could not play game_over sound:", err);
+  });
 }
 
 // Move player
@@ -306,7 +365,7 @@ canvas.addEventListener(
     const scaleX = canvas.width / rect.width;
     const touchX = (touch.clientX - rect.left) * scaleX;
 
-    // left half => move left, right half => move right
+    // Left half => left, right half => right
     if (touchX < canvas.width / 2) {
       movePlayer("left");
     } else {
@@ -330,8 +389,11 @@ function gameLoop() {
   }
 }
 
-// Spawn pizzas at intervals
+// Spawn pizzas every second
 setInterval(createPizza, 1000);
 
-// Start the game loop
+// Spawn weights every 3 seconds
+setInterval(createWeight, 3000);
+
+// Start the game
 gameLoop();
