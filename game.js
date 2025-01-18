@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0"; // or "v1.2.3", whatever you like
+let version = "v1.0.1"; // or "v1.2.3", whatever you like
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -70,7 +70,7 @@ tempCanvas.height = canvas.height;
 
 // Load player image
 const playerImage = new Image();
-playerImage.src = "https://banner2.cleanpng.com/20180217/zjw/av14rma49.webp";
+playerImage.src = "./player.png";
 
 // Player object
 let player = {
@@ -192,6 +192,8 @@ function draw() {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
     ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
+    // Show restart button
+    restartBtn.style.display = "block";
   }
 
   // 2) Finally, draw your version number in bottom-left corner
