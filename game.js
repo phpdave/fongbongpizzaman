@@ -1,9 +1,20 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Keep logical (internal) resolution at 800×600
+// Keep internal (logical) resolution at 800×600 for game logic
 canvas.width = 800;
 canvas.height = 600;
+
+// Dynamically resize the canvas style to match the browser’s visible area.
+// This helps avoid the iPad “cut off bottom” bug when address bars hide/show.
+function resizeCanvasToWindow() {
+  canvas.style.width = window.innerWidth + "px";
+  canvas.style.height = window.innerHeight + "px";
+}
+window.addEventListener("resize", resizeCanvasToWindow);
+window.addEventListener("orientationchange", resizeCanvasToWindow);
+// Call once on load:
+resizeCanvasToWindow();
 
 // 1) CREATE BACKGROUND MUSIC AUDIO OBJECT
 const backgroundMusic = new Audio("https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bit%20Quest.mp3");
@@ -153,6 +164,10 @@ function draw() {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
     ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
+
+    // Show a hint to restart
+    ctx.font = "20px Arial";
+    ctx.fillText("Tap or press R to restart", canvas.width / 2 - 120, canvas.height / 2 + 50);
   }
 }
 
@@ -174,21 +189,33 @@ document.addEventListener("keydown", (e) => {
     });
   }
 
-  if (e.key === "ArrowLeft") {
-    movePlayer("left");
-  } else if (e.key === "ArrowRight") {
-    movePlayer("right");
+  if (!gameOver) {
+    if (e.key === "ArrowLeft") {
+      movePlayer("left");
+    } else if (e.key === "ArrowRight") {
+      movePlayer("right");
+    }
+  } else {
+    // If it's game over, pressing "R" reloads page
+    if (e.key.toLowerCase() === "r") {
+      location.reload();
+    }
   }
 });
 
-// ----- MOBILE TOUCH INPUT -----
-// If user taps left half => move left, right half => move right.
+// MOBILE TOUCH INPUT
 canvas.addEventListener("touchstart", function(e) {
   // If music is paused, try playing it on first touch
   if (backgroundMusic.paused) {
     backgroundMusic.play().catch(err => {
       console.warn("Audio play was prevented:", err);
     });
+  }
+
+  // If game over, tapping reloads
+  if (gameOver) {
+    location.reload();
+    return;
   }
 
   // Prevent default so iOS Safari doesn’t treat it as a scroll
@@ -204,7 +231,7 @@ canvas.addEventListener("touchstart", function(e) {
 
   // Calculate the internal coordinates
   const touchX = (touch.clientX - rect.left) * scaleX;
-  // const touchY = (touch.clientY - rect.top) * scaleY; // if needed
+  // const touchY = (touch.clientY - rect.top) * scaleY; // only if needed
 
   // Simple logic: left half => "left", right half => "right"
   if (touchX < canvas.width / 2) {
@@ -212,7 +239,7 @@ canvas.addEventListener("touchstart", function(e) {
   } else {
     movePlayer("right");
   }
-}, { passive: false }); // { passive: false } so we can call e.preventDefault()
+}, { passive: false });
 
 // Main game loop
 function gameLoop() {
@@ -226,5 +253,5 @@ function gameLoop() {
 // Spawn pizzas at intervals
 setInterval(createPizza, 1000);
 
-// Start the game loop (renders + logic). Music & movement will start on user input.
+// Start the game loop (renders + logic). Music & movement start on user input.
 gameLoop();
