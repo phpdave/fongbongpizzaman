@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.4";
+let version = "v1.0.5";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
