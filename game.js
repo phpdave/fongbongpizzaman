@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.5";
+let version = "v1.0.6.makeharder";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -49,7 +49,7 @@ yummySound.volume = 1.0;
 const weightSound = new Audio("./weightlifting.mp3");
 weightSound.volume = 1.0;
 
-// 2) GAME OVER SOUND
+// GAME OVER SOUND
 const gameOverSound = new Audio("./game_over.mp3");
 gameOverSound.volume = 1.0;
 
@@ -84,7 +84,7 @@ let player = {
 
 // Health logic
 let health = 2;
-const maxHealth = 4;
+const maxHealth = 3;
 
 // Pizzas array
 let pizzas = [];
@@ -163,7 +163,7 @@ function drawWeights() {
   });
 }
 
-// Update game state
+/** Update game state */
 function update() {
   if (gameOver) return;
 
@@ -187,7 +187,7 @@ function update() {
         player.x = canvas.width - player.width;
       }
 
-      // Increase health by 1 (max 10)
+      // Increase health by 1 (max = maxHealth)
       if (health < maxHealth) {
         health++;
       }
@@ -202,7 +202,6 @@ function update() {
       pizzas.splice(index, 1);
       health--;
       if (health <= 0 && !gameOver) {
-        // 3) SET GAME OVER + PLAY SOUND ONCE
         gameOver = true;
         playGameOverSound();
       }
@@ -220,7 +219,7 @@ function update() {
       weight.x <= player.x + player.width;
 
     if (caughtWeight) {
-      // Remove weight
+      // Remove weight from array
       weights.splice(wIndex, 1);
 
       // Shrink player by 10px
@@ -229,7 +228,14 @@ function update() {
         player.width = 10;
       }
 
-      // Weight sound
+      // 1) NEW: health goes down by 1
+      health--;
+      if (health <= 0 && !gameOver) {
+        gameOver = true;
+        playGameOverSound();
+      }
+
+      // Play weight sound
       const newWeightSound = weightSound.cloneNode(true);
       newWeightSound.play().catch((err) => {
         console.warn("Could not play weight sound:", err);
