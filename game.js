@@ -1,3 +1,6 @@
+// 1) Define your version somewhere near the top:
+let version = "v1.0"; // or "v1.2.3", whatever you like
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const restartBtn = document.getElementById("restartButton");
@@ -165,13 +168,12 @@ function update() {
   });
 }
 
-// Draw game elements
+// Inside your draw() function, after everything else is drawn:
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
   drawBackground();
 
-  // Title
+  // ...existing text like game title, score, etc...
   ctx.fillStyle = "#fff";
   ctx.font = "30px Arial";
   ctx.fillText("Fong Bong Pizza Man", canvas.width / 2 - 150, 40);
@@ -181,18 +183,21 @@ function draw() {
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
 
+  // Draw player, pizzas, etc...
   drawPlayer();
   drawPizzas();
 
-  // Game Over
+  // If game over, draw "Game Over"
   if (gameOver) {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
     ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
-
-    // Show restart button
-    restartBtn.style.display = "block";
   }
+
+  // 2) Finally, draw your version number in bottom-left corner
+  ctx.fillStyle = "#fff";
+  ctx.font = "14px Arial";
+  ctx.fillText(`Version: ${version}`, 10, canvas.height - 10);
 }
 
 // Move player
