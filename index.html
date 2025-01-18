@@ -20,17 +20,16 @@
       -webkit-touch-callout: none; /* iOS Safari: disable callouts */
       -webkit-user-select: none;   /* iOS Safari: disable text selection */
       user-select: none;
-      background: #000; /* A black background behind canvas if letterboxed */
+      background: #000; /* Black behind canvas if letterboxed */
     }
 
-    /* We'll position & scale the canvas via JS for perfect letterboxing.
-       By default, place canvas absolutely at the top-left corner. */
+    /* We'll position & scale the canvas via JS for perfect letterboxing. */
     #gameCanvas {
       position: absolute;
       left: 0;
       top: 0;
       background: #000;
-      touch-action: none; /* Prevent default gestures in modern browsers */
+      touch-action: none; /* Prevent default gestures */
     }
 
     /* Hidden "Restart Game" button in the center of the screen. */
@@ -55,7 +54,6 @@
 </head>
 <body>
   <canvas id="gameCanvas"></canvas>
-  <!-- Hidden by default, shown on game over -->
   <button id="restartButton">Restart Game</button>
 
   <script src="game.js"></script>

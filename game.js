@@ -1,16 +1,15 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.1"; // or "v1.2.3", whatever you like
+let version = "v1.0.1";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const restartBtn = document.getElementById("restartButton");
 
-/* 1) Internal (logical) resolution remains 800x600 for your game logic.
-      We'll letterbox it on any screen size below. */
+// Keep internal resolution 800x600
 canvas.width = 800;
 canvas.height = 600;
 
-/* 2) Letterbox resizing: keep 4:3 aspect ratio so no sides get cut off. */
+/* Letterbox resizing: keep 4:3 aspect ratio so no sides get cut off. */
 function resizeCanvas() {
   const windowWidth = window.innerWidth;
   const windowHeight = window.innerHeight;
@@ -35,10 +34,9 @@ function resizeCanvas() {
   canvas.style.top = (windowHeight - finalHeight) / 2 + "px";
 }
 
-// Listen to browser resizing/orientation changes
+// Listen to resizing
 window.addEventListener("resize", resizeCanvas);
 window.addEventListener("orientationchange", resizeCanvas);
-// Call once at start
 resizeCanvas();
 
 // BACKGROUND MUSIC
@@ -68,7 +66,7 @@ const tempCtx = tempCanvas.getContext("2d");
 tempCanvas.width = canvas.width;
 tempCanvas.height = canvas.height;
 
-// Load player image
+// Load the player image
 const playerImage = new Image();
 playerImage.src = "./player.png";
 
@@ -81,14 +79,18 @@ let player = {
   speed: 30,
 };
 
+// Health logic
+let health = 5;      // Start with 5 HP
+const maxHealth = 10;
+
+// Pizzas array
 let pizzas = [];
 let score = 0;
 let gameOver = false;
 
 // Load pizza image
 const pizzaImage = new Image();
-pizzaImage.src =
-  "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
+pizzaImage.src = "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
 
 // Create a new pizza
 function createPizza() {
@@ -139,41 +141,52 @@ function update() {
     pizza.y += pizza.speed;
 
     // Check if pizza is caught
-    if (
+    const caught =
       pizza.y + pizza.height >= player.y &&
       pizza.x + pizza.width >= player.x &&
-      pizza.x <= player.x + player.width
-    ) {
+      pizza.x <= player.x + player.width;
+
+    if (caught) {
       score++;
       pizzas.splice(index, 1);
 
-      // Make player 5 pixels wider
+      // Make the player 5 pixels wider
       player.width += 5;
       if (player.x + player.width > canvas.width) {
         player.x = canvas.width - player.width;
       }
 
-      // "Yummy!" sound (cloned so multiple catches overlap)
+      // Increase health by 1 (up to max)
+      if (health < maxHealth) {
+        health++;
+      }
+
+      // "Yummy!" sound
       const newSound = yummySound.cloneNode(true);
       newSound.volume = yummySound.volume;
       newSound.play().catch((err) => {
         console.warn("Could not play yummy sound:", err);
       });
     }
-
-    // End game if pizza hits the ground
-    if (pizza.y > canvas.height) {
-      gameOver = true;
+    // If pizza goes off the screen, we lose health
+    else if (pizza.y > canvas.height) {
+      pizzas.splice(index, 1);
+      health--;
+      // If health hits 0, gameOver
+      if (health <= 0) {
+        gameOver = true;
+      }
     }
   });
 }
 
-// Inside your draw() function, after everything else is drawn:
+// Draw game elements
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
   drawBackground();
 
-  // ...existing text like game title, score, etc...
+  // Title
   ctx.fillStyle = "#fff";
   ctx.font = "30px Arial";
   ctx.fillText("Fong Bong Pizza Man", canvas.width / 2 - 150, 40);
@@ -183,23 +196,67 @@ function draw() {
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
 
-  // Draw player, pizzas, etc...
+  // Draw player & pizzas
   drawPlayer();
   drawPizzas();
 
-  // If game over, draw "Game Over"
+  // Draw health orb in bottom-left corner
+  drawHealthOrb();
+
+  // If game over, show message + restart
   if (gameOver) {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
     ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
+
     // Show restart button
     restartBtn.style.display = "block";
   }
 
-  // 2) Finally, draw your version number in bottom-left corner
+  // Version number in bottom-left (below the orb)
   ctx.fillStyle = "#fff";
   ctx.font = "14px Arial";
   ctx.fillText(`Version: ${version}`, 10, canvas.height - 10);
+}
+
+/**
+ * Draws a red circular “orb” that’s filled to reflect the current health %.
+ * Example: If health=5 and maxHealth=10 => orb is half filled.
+ */
+function drawHealthOrb() {
+  // orb center near bottom-left, radius 40, for instance
+  const orbX = 70;
+  const orbY = canvas.height - 70;
+  const radius = 40;
+
+  // Outer circle (gray background or black behind the fill)
+  ctx.beginPath();
+  ctx.arc(orbX, orbY, radius, 0, 2 * Math.PI);
+  ctx.fillStyle = "#333"; // background color of orb
+  ctx.fill();
+
+  // Now fill a portion in red, from 0 (top) downward
+  // Approach: we can use a “clip” or draw an arc fraction.
+  // Let’s do a circle sector from the top around to some fraction:
+  const fillPercent = health / maxHealth; // 0..1
+
+  // We'll do a “pie slice” from -90 degrees to some fraction
+  const startAngle = -Math.PI / 2; // top
+  const endAngle = startAngle + fillPercent * 2 * Math.PI;
+
+  ctx.beginPath();
+  ctx.moveTo(orbX, orbY);
+  ctx.arc(orbX, orbY, radius, startAngle, endAngle, false);
+  ctx.closePath();
+  ctx.fillStyle = "red";
+  ctx.fill();
+
+  // Optionally, you can add a border/stroke
+  ctx.beginPath();
+  ctx.arc(orbX, orbY, radius, 0, 2 * Math.PI);
+  ctx.strokeStyle = "#fff";
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
 // Move player
@@ -215,7 +272,6 @@ function movePlayer(direction) {
 
 // START BACKGROUND MUSIC ON FIRST KEY PRESS
 document.addEventListener("keydown", (e) => {
-  // If music is paused, try playing it.
   if (backgroundMusic.paused) {
     backgroundMusic.play().catch((err) => {
       console.warn("Audio play was prevented:", err);
@@ -239,21 +295,18 @@ canvas.addEventListener(
       });
     }
 
-    // Prevent default so iOS Safari doesn’t treat it as scroll
     e.preventDefault();
 
-    // If game is over, taps won't do anything
     if (gameOver) return;
 
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
 
-    // Because the canvas is letterboxed, we map the touch coordinate
-    // to the 800x600 space
+    // Convert to internal coords
     const scaleX = canvas.width / rect.width;
     const touchX = (touch.clientX - rect.left) * scaleX;
 
-    // Left half => left, right half => right
+    // left half => move left, right half => move right
     if (touchX < canvas.width / 2) {
       movePlayer("left");
     } else {
@@ -263,9 +316,9 @@ canvas.addEventListener(
   { passive: false }
 );
 
-// RESTART BUTTON LOGIC
+// RESTART BUTTON
 restartBtn.addEventListener("click", () => {
-  location.reload(); // simple page reload
+  location.reload();
 });
 
 // Main game loop
@@ -280,5 +333,5 @@ function gameLoop() {
 // Spawn pizzas at intervals
 setInterval(createPizza, 1000);
 
-// Start the game loop now; music & movement start on user interaction
+// Start the game loop
 gameLoop();
