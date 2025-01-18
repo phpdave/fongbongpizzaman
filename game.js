@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.6.makeharder";
+let version = "v1.0.6-harder-highscore";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -84,7 +84,7 @@ let player = {
 
 // Health logic
 let health = 2;
-const maxHealth = 3;
+const maxHealth = 4;
 
 // Pizzas array
 let pizzas = [];
@@ -102,6 +102,14 @@ weightImage.src = "./weightlifting.png";
 
 // Array to store weights
 let weights = [];
+
+/** 
+ * 2) GET EXISTING HIGH SCORE FROM LOCAL STORAGE 
+ *    If none found, default to 0 & empty initials
+ */
+let highScore = parseInt(localStorage.getItem("pizzaGameHighScore")) || 0;
+let highScoreInitials =
+  localStorage.getItem("pizzaGameHighScoreInitials") || "";
 
 /** Create a new pizza */
 function createPizza() {
@@ -203,7 +211,7 @@ function update() {
       health--;
       if (health <= 0 && !gameOver) {
         gameOver = true;
-        playGameOverSound();
+        onGameOver();
       }
     }
   });
@@ -228,14 +236,14 @@ function update() {
         player.width = 10;
       }
 
-      // 1) NEW: health goes down by 1
+      // health goes down by 1
       health--;
       if (health <= 0 && !gameOver) {
         gameOver = true;
-        playGameOverSound();
+        onGameOver();
       }
 
-      // Play weight sound
+      // Weight sound
       const newWeightSound = weightSound.cloneNode(true);
       newWeightSound.play().catch((err) => {
         console.warn("Could not play weight sound:", err);
@@ -245,6 +253,29 @@ function update() {
       weights.splice(wIndex, 1);
     }
   });
+}
+
+/** Called exactly once when gameOver becomes true */
+function onGameOver() {
+  playGameOverSound();
+
+  // 3) Check if score is a new high score
+  if (score > highScore) {
+    // Prompt for initials
+    let initials = prompt("New High Score! Enter your initials:");
+
+    // If user canceled or empty, just store "???"
+    if (!initials) initials = "???";
+    initials = initials.trim().toUpperCase();
+
+    // Update localStorage
+    localStorage.setItem("pizzaGameHighScore", score.toString());
+    localStorage.setItem("pizzaGameHighScoreInitials", initials);
+
+    // Update our in-memory variables
+    highScore = score;
+    highScoreInitials = initials;
+  }
 }
 
 /** Draw everything */
@@ -262,6 +293,14 @@ function draw() {
   ctx.fillStyle = "#fff";
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
+
+  // 4) Display High Score in top-right corner
+  const highScoreDisplay = `High Score: ${highScore} (${highScoreInitials})`;
+  ctx.fillText(
+    highScoreDisplay,
+    canvas.width - 250, // adjust as needed
+    30
+  );
 
   // Draw player & items
   drawPlayer();
