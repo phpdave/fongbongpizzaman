@@ -1,31 +1,55 @@
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const restartBtn = document.getElementById("restartButton");
 
-// Keep internal (logical) resolution at 800×600 for game logic
+/* 1) Internal (logical) resolution remains 800x600 for your game logic.
+      We'll letterbox it on any screen size below. */
 canvas.width = 800;
 canvas.height = 600;
 
-// Dynamically resize the canvas style to match the browser’s visible area.
-// This helps avoid the iPad “cut off bottom” bug when address bars hide/show.
-function resizeCanvasToWindow() {
-  canvas.style.width = window.innerWidth + "px";
-  canvas.style.height = window.innerHeight + "px";
-}
-window.addEventListener("resize", resizeCanvasToWindow);
-window.addEventListener("orientationchange", resizeCanvasToWindow);
-// Call once on load:
-resizeCanvasToWindow();
+/* 2) Letterbox resizing: keep 4:3 aspect ratio so no sides get cut off. */
+function resizeCanvas() {
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  const targetAspect = 800 / 600; // 4:3
+  const windowAspect = windowWidth / windowHeight;
 
-// 1) CREATE BACKGROUND MUSIC AUDIO OBJECT
-const backgroundMusic = new Audio("https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bit%20Quest.mp3");
+  let finalWidth, finalHeight;
+  if (windowAspect < targetAspect) {
+    // Window is relatively tall/narrow -> match full width, reduce height
+    finalWidth = windowWidth;
+    finalHeight = windowWidth / targetAspect;
+  } else {
+    // Window is relatively wide -> match full height, reduce width
+    finalHeight = windowHeight;
+    finalWidth = windowHeight * targetAspect;
+  }
+
+  // Center the canvas in the window
+  canvas.style.width = finalWidth + "px";
+  canvas.style.height = finalHeight + "px";
+  canvas.style.left = (windowWidth - finalWidth) / 2 + "px";
+  canvas.style.top = (windowHeight - finalHeight) / 2 + "px";
+}
+
+// Listen to browser resizing/orientation changes
+window.addEventListener("resize", resizeCanvas);
+window.addEventListener("orientationchange", resizeCanvas);
+// Call once at start
+resizeCanvas();
+
+// BACKGROUND MUSIC
+const backgroundMusic = new Audio(
+  "https://incompetech.com/music/royalty-free/mp3-royaltyfree/Bit%20Quest.mp3"
+);
 backgroundMusic.loop = true;
 backgroundMusic.volume = 0.3;
 
-// 2) CREATE “YUMMY” SOUND EFFECT
+// YUMMY SOUND
 const yummySound = new Audio("./yummy.mp3");
-yummySound.volume = 1.0; // full volume (adjust as needed)
+yummySound.volume = 1.0;
 
-// Load the background image
+// Load background image
 const backgroundImage = new Image();
 backgroundImage.src = "./fong_bong_pizza_man.webp";
 backgroundImage.onload = () => {
@@ -41,7 +65,7 @@ const tempCtx = tempCanvas.getContext("2d");
 tempCanvas.width = canvas.width;
 tempCanvas.height = canvas.height;
 
-// Load the player image
+// Load player image
 const playerImage = new Image();
 playerImage.src = "https://banner2.cleanpng.com/20180217/zjw/av14rma49.webp";
 
@@ -60,7 +84,8 @@ let gameOver = false;
 
 // Load pizza image
 const pizzaImage = new Image();
-pizzaImage.src = "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
+pizzaImage.src =
+  "https://134984376.cdn6.editmysite.com/uploads/1/3/4/9/134984376/s935319452332453897_p106_i1_w1080.png";
 
 // Create a new pizza
 function createPizza() {
@@ -77,15 +102,16 @@ function createPizza() {
 // Draw the background with transparency
 function drawBackground() {
   if (backgroundImage.complete) {
-    // Clear the temp canvas each frame
     tempCtx.clearRect(0, 0, tempCanvas.width, tempCanvas.height);
-
-    // Draw background image at 60% opacity onto temp canvas
     tempCtx.globalAlpha = 0.6;
-    tempCtx.drawImage(backgroundImage, 0, 0, tempCanvas.width, tempCanvas.height);
-    tempCtx.globalAlpha = 1; // reset alpha
-
-    // Now draw temp canvas onto the main canvas
+    tempCtx.drawImage(
+      backgroundImage,
+      0,
+      0,
+      tempCanvas.width,
+      tempCanvas.height
+    );
+    tempCtx.globalAlpha = 1;
     ctx.drawImage(tempCanvas, 0, 0);
   }
 }
@@ -118,17 +144,16 @@ function update() {
       score++;
       pizzas.splice(index, 1);
 
-      // Make the player 5 pixels wider
+      // Make player 5 pixels wider
       player.width += 5;
-      // Keep the player within bounds
       if (player.x + player.width > canvas.width) {
         player.x = canvas.width - player.width;
       }
 
-      // Play the "Yummy!" sound (overlapping if multiple catches)
+      // "Yummy!" sound (cloned so multiple catches overlap)
       const newSound = yummySound.cloneNode(true);
       newSound.volume = yummySound.volume;
-      newSound.play().catch(err => {
+      newSound.play().catch((err) => {
         console.warn("Could not play yummy sound:", err);
       });
     }
@@ -146,12 +171,12 @@ function draw() {
 
   drawBackground();
 
-  // Draw game title
+  // Title
   ctx.fillStyle = "#fff";
   ctx.font = "30px Arial";
   ctx.fillText("Fong Bong Pizza Man", canvas.width / 2 - 150, 40);
 
-  // Draw score
+  // Score
   ctx.fillStyle = "#fff";
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
@@ -159,24 +184,25 @@ function draw() {
   drawPlayer();
   drawPizzas();
 
-  // Display game over message
+  // Game Over
   if (gameOver) {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
     ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
 
-    // Show a hint to restart
-    ctx.font = "20px Arial";
-    ctx.fillText("Tap or press R to restart", canvas.width / 2 - 120, canvas.height / 2 + 50);
+    // Show restart button
+    restartBtn.style.display = "block";
   }
 }
 
 // Move player
 function movePlayer(direction) {
-  if (direction === "left" && player.x > 0) {
-    player.x -= player.speed;
-  } else if (direction === "right" && player.x + player.width < canvas.width) {
-    player.x += player.speed;
+  if (!gameOver) {
+    if (direction === "left" && player.x > 0) {
+      player.x -= player.speed;
+    } else if (direction === "right" && player.x + player.width < canvas.width) {
+      player.x += player.speed;
+    }
   }
 }
 
@@ -184,62 +210,56 @@ function movePlayer(direction) {
 document.addEventListener("keydown", (e) => {
   // If music is paused, try playing it.
   if (backgroundMusic.paused) {
-    backgroundMusic.play().catch(err => {
+    backgroundMusic.play().catch((err) => {
       console.warn("Audio play was prevented:", err);
     });
   }
 
-  if (!gameOver) {
-    if (e.key === "ArrowLeft") {
-      movePlayer("left");
-    } else if (e.key === "ArrowRight") {
-      movePlayer("right");
-    }
-  } else {
-    // If it's game over, pressing "R" reloads page
-    if (e.key.toLowerCase() === "r") {
-      location.reload();
-    }
+  if (e.key === "ArrowLeft") {
+    movePlayer("left");
+  } else if (e.key === "ArrowRight") {
+    movePlayer("right");
   }
 });
 
 // MOBILE TOUCH INPUT
-canvas.addEventListener("touchstart", function(e) {
-  // If music is paused, try playing it on first touch
-  if (backgroundMusic.paused) {
-    backgroundMusic.play().catch(err => {
-      console.warn("Audio play was prevented:", err);
-    });
-  }
+canvas.addEventListener(
+  "touchstart",
+  function (e) {
+    if (backgroundMusic.paused) {
+      backgroundMusic.play().catch((err) => {
+        console.warn("Audio play was prevented:", err);
+      });
+    }
 
-  // If game over, tapping reloads
-  if (gameOver) {
-    location.reload();
-    return;
-  }
+    // Prevent default so iOS Safari doesn’t treat it as scroll
+    e.preventDefault();
 
-  // Prevent default so iOS Safari doesn’t treat it as a scroll
-  e.preventDefault();
+    // If game is over, taps won't do anything
+    if (gameOver) return;
 
-  const rect = canvas.getBoundingClientRect();
-  const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
 
-  // Because the canvas is visually scaled to fill the screen,
-  // we must convert the touch coordinates to our internal 800×600 space.
-  const scaleX = canvas.width / rect.width;   // ratio of internal width to display width
-  const scaleY = canvas.height / rect.height; // ratio of internal height to display height
+    // Because the canvas is letterboxed, we map the touch coordinate
+    // to the 800x600 space
+    const scaleX = canvas.width / rect.width;
+    const touchX = (touch.clientX - rect.left) * scaleX;
 
-  // Calculate the internal coordinates
-  const touchX = (touch.clientX - rect.left) * scaleX;
-  // const touchY = (touch.clientY - rect.top) * scaleY; // only if needed
+    // Left half => left, right half => right
+    if (touchX < canvas.width / 2) {
+      movePlayer("left");
+    } else {
+      movePlayer("right");
+    }
+  },
+  { passive: false }
+);
 
-  // Simple logic: left half => "left", right half => "right"
-  if (touchX < canvas.width / 2) {
-    movePlayer("left");
-  } else {
-    movePlayer("right");
-  }
-}, { passive: false });
+// RESTART BUTTON LOGIC
+restartBtn.addEventListener("click", () => {
+  location.reload(); // simple page reload
+});
 
 // Main game loop
 function gameLoop() {
@@ -253,5 +273,5 @@ function gameLoop() {
 // Spawn pizzas at intervals
 setInterval(createPizza, 1000);
 
-// Start the game loop (renders + logic). Music & movement start on user input.
+// Start the game loop now; music & movement start on user interaction
 gameLoop();
