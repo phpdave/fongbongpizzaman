@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.1.1-ned-laser-with-ned-sound-drag-move";
+let version = "v1.1.1-ned-laser-with-ned-sound-drag-move-lower-sound";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -43,11 +43,11 @@ backgroundMusic.volume = 0.3;
 
 // YUMMY SOUND (pizza)
 const yummySound = new Audio("./yummy.mp3");
-yummySound.volume = 1.0;
+yummySound.volume = .5;
 
 // WEIGHT SOUND
 const weightSound = new Audio("./weightlifting.mp3");
-weightSound.volume = 0.8;
+weightSound.volume = 0.5;
 
 // GAME OVER SOUND
 const gameOverSound = new Audio("./game_over.mp3");
