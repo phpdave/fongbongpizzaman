@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.7-weight-drag-to-move";
+let version = "v1.0.8-weight-touch-drag-mouse-drag";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -103,8 +103,8 @@ weightImage.src = "./weightlifting.png";
 // Array to store weights
 let weights = [];
 
-/** 
- * GET EXISTING HIGH SCORE FROM LOCAL STORAGE 
+/**
+ * GET EXISTING HIGH SCORE FROM LOCAL STORAGE
  */
 let highScore = parseInt(localStorage.getItem("pizzaGameHighScore")) || 0;
 let highScoreInitials =
@@ -226,7 +226,7 @@ function update() {
       weight.x <= player.x + player.width;
 
     if (caughtWeight) {
-      // Remove weight from array
+      // Remove weight
       weights.splice(wIndex, 1);
 
       // Shrink player by 33% (rounded up)
@@ -384,14 +384,14 @@ function movePlayer(direction) {
 }
 
 // ---------------------------------
-//  DRAG-BASED MOBILE CONTROL
+//  DRAG-BASED MOBILE + MOUSE CONTROL
 // ---------------------------------
 let dragStartX = 0;
 let dragStartY = 0;
 let isDragging = false;
 let jumpUsed = false; // ensure only 1 jump per drag if desired
 
-// "touchstart": record initial finger position
+// 1) TOUCH EVENTS
 canvas.addEventListener(
   "touchstart",
   function (e) {
@@ -416,7 +416,6 @@ canvas.addEventListener(
   { passive: false }
 );
 
-// "touchmove": user is dragging => move horizontally OR jump if they drag up
 canvas.addEventListener(
   "touchmove",
   function (e) {
@@ -434,26 +433,81 @@ canvas.addEventListener(
     // DRAG UP DETECTION
     const deltaY = dragStartY - currentY;
     if (deltaY > 40 && !jumpUsed) {
-      // If user has dragged upward 40+ px => do a simple "jump" effect
       doJump();
       jumpUsed = true;
     } else {
-      // Otherwise move horizontally, centering player on finger
+      // Move horizontally
       player.x = currentX - player.width / 2;
-      // keep in bounds
-      if (player.x < 0) player.x = 0;
-      if (player.x + player.width > canvas.width) {
-        player.x = canvas.width - player.width;
-      }
+      clampPlayerX();
     }
   },
   { passive: false }
 );
 
-// "touchend": finished the drag
 canvas.addEventListener("touchend", function (e) {
   isDragging = false;
 });
+
+// 2) MOUSE EVENTS
+let mouseDown = false;
+
+canvas.addEventListener("mousedown", function (e) {
+  // Start music if paused
+  if (backgroundMusic.paused) {
+    backgroundMusic.play().catch(console.warn);
+  }
+  if (gameOver) return;
+
+  mouseDown = true;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  dragStartX = (e.clientX - rect.left) * scaleX;
+  dragStartY = (e.clientY - rect.top) * scaleY;
+  isDragging = true;
+  jumpUsed = false;
+});
+
+canvas.addEventListener("mousemove", function (e) {
+  if (!mouseDown || !isDragging || gameOver) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const currentX = (e.clientX - rect.left) * scaleX;
+  const currentY = (e.clientY - rect.top) * scaleY;
+
+  const deltaY = dragStartY - currentY;
+  if (deltaY > 40 && !jumpUsed) {
+    doJump();
+    jumpUsed = true;
+  } else {
+    // Move horizontally
+    player.x = currentX - player.width / 2;
+    clampPlayerX();
+  }
+});
+
+canvas.addEventListener("mouseup", function (e) {
+  mouseDown = false;
+  isDragging = false;
+});
+
+// If user drags off canvas and releases mouse
+canvas.addEventListener("mouseleave", function (e) {
+  mouseDown = false;
+  isDragging = false;
+});
+
+// Helper: keep player.x in range
+function clampPlayerX() {
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.width > canvas.width) {
+    player.x = canvas.width - player.width;
+  }
+}
 
 // Example "jump" effect: move up 50px, then come back down after 200ms
 function doJump() {
@@ -464,7 +518,7 @@ function doJump() {
       player.y += 50;
     }, 200);
   }
-};
+}
 
 // RESTART BUTTON
 restartBtn.addEventListener("click", () => {
