@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.7-harder-change weight";
+let version = "v1.0.7-weight-drag-to-move";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -104,8 +104,7 @@ weightImage.src = "./weightlifting.png";
 let weights = [];
 
 /** 
- * 2) GET EXISTING HIGH SCORE FROM LOCAL STORAGE 
- *    If none found, default to 0 & empty initials
+ * GET EXISTING HIGH SCORE FROM LOCAL STORAGE 
  */
 let highScore = parseInt(localStorage.getItem("pizzaGameHighScore")) || 0;
 let highScoreInitials =
@@ -230,7 +229,7 @@ function update() {
       // Remove weight from array
       weights.splice(wIndex, 1);
 
-      // *** CHANGED: Instead of -10px, shrink player by 33% (round up)
+      // Shrink player by 33% (rounded up)
       player.width = Math.ceil(player.width * (2 / 3));
       if (player.width < 10) {
         player.width = 10;
@@ -259,12 +258,10 @@ function update() {
 function onGameOver() {
   playGameOverSound();
 
-  // 3) Check if score is a new high score
+  // Check if score is a new high score
   if (score > highScore) {
     // Prompt for initials
     let initials = prompt("New High Score! Enter your initials:");
-
-    // If user canceled or empty, just store "???"
     if (!initials) initials = "???";
     initials = initials.trim().toUpperCase();
 
@@ -294,7 +291,7 @@ function draw() {
   ctx.font = "20px Arial";
   ctx.fillText(`Score: ${score}`, 10, 30);
 
-  // 4) Display High Score in top-right corner
+  // Display High Score in top-right corner
   const highScoreDisplay = `High Score: ${highScore} (${highScoreInitials})`;
   ctx.fillText(highScoreDisplay, canvas.width - 250, 30);
 
@@ -359,19 +356,9 @@ function playGameOverSound() {
   });
 }
 
-// Move player
-function movePlayer(direction) {
-  if (!gameOver) {
-    if (direction === "left" && player.x > 0) {
-      player.x -= player.speed;
-    } else if (direction === "right" && player.x + player.width < canvas.width) {
-      player.x += player.speed;
-    }
-  }
-}
-
-// START BACKGROUND MUSIC ON FIRST KEY PRESS
+// Move player with arrow keys (desktop)
 document.addEventListener("keydown", (e) => {
+  // Start music if paused
   if (backgroundMusic.paused) {
     backgroundMusic.play().catch((err) => {
       console.warn("Audio play was prevented:", err);
@@ -385,7 +372,26 @@ document.addEventListener("keydown", (e) => {
   }
 });
 
-// MOBILE TOUCH INPUT
+// Simple horizontal movement for arrows
+function movePlayer(direction) {
+  if (!gameOver) {
+    if (direction === "left" && player.x > 0) {
+      player.x -= player.speed;
+    } else if (direction === "right" && player.x + player.width < canvas.width) {
+      player.x += player.speed;
+    }
+  }
+}
+
+// ---------------------------------
+//  DRAG-BASED MOBILE CONTROL
+// ---------------------------------
+let dragStartX = 0;
+let dragStartY = 0;
+let isDragging = false;
+let jumpUsed = false; // ensure only 1 jump per drag if desired
+
+// "touchstart": record initial finger position
 canvas.addEventListener(
   "touchstart",
   function (e) {
@@ -394,27 +400,71 @@ canvas.addEventListener(
         console.warn("Audio play was prevented:", err);
       });
     }
-
     e.preventDefault();
-
     if (gameOver) return;
 
     const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-
-    // Convert to internal coords
     const scaleX = canvas.width / rect.width;
-    const touchX = (touch.clientX - rect.left) * scaleX;
+    const scaleY = canvas.height / rect.height;
 
-    // Left half => left, right half => right
-    if (touchX < canvas.width / 2) {
-      movePlayer("left");
+    dragStartX = (touch.clientX - rect.left) * scaleX;
+    dragStartY = (touch.clientY - rect.top) * scaleY;
+    isDragging = true;
+    jumpUsed = false;
+  },
+  { passive: false }
+);
+
+// "touchmove": user is dragging => move horizontally OR jump if they drag up
+canvas.addEventListener(
+  "touchmove",
+  function (e) {
+    e.preventDefault();
+    if (!isDragging || gameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const currentX = (touch.clientX - rect.left) * scaleX;
+    const currentY = (touch.clientY - rect.top) * scaleY;
+
+    // DRAG UP DETECTION
+    const deltaY = dragStartY - currentY;
+    if (deltaY > 40 && !jumpUsed) {
+      // If user has dragged upward 40+ px => do a simple "jump" effect
+      doJump();
+      jumpUsed = true;
     } else {
-      movePlayer("right");
+      // Otherwise move horizontally, centering player on finger
+      player.x = currentX - player.width / 2;
+      // keep in bounds
+      if (player.x < 0) player.x = 0;
+      if (player.x + player.width > canvas.width) {
+        player.x = canvas.width - player.width;
+      }
     }
   },
   { passive: false }
 );
+
+// "touchend": finished the drag
+canvas.addEventListener("touchend", function (e) {
+  isDragging = false;
+});
+
+// Example "jump" effect: move up 50px, then come back down after 200ms
+function doJump() {
+  if (player.y >= canvas.height - 150) {
+    // simple check if on "ground"
+    player.y -= 50;
+    setTimeout(() => {
+      player.y += 50;
+    }, 200);
+  }
+};
 
 // RESTART BUTTON
 restartBtn.addEventListener("click", () => {
