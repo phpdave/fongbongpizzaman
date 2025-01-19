@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.1.1-ned-laser-with-ned-sound-drag-move-lower-sound";
+let version = "v1.2.0-ned-double-lasers-random-angles-better-laser";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -43,19 +43,19 @@ backgroundMusic.volume = 0.3;
 
 // YUMMY SOUND (pizza)
 const yummySound = new Audio("./yummy.mp3");
-yummySound.volume = .5;
+yummySound.volume = 1.0;
 
 // WEIGHT SOUND
 const weightSound = new Audio("./weightlifting.mp3");
-weightSound.volume = 0.5;
+weightSound.volume = 0.8;
 
 // GAME OVER SOUND
 const gameOverSound = new Audio("./game_over.mp3");
 gameOverSound.volume = 1.0;
 
-// NEW: NED SOUND
+// NED SOUND
 const nedSound = new Audio("./ned.mp3");
-nedSound.volume = 1.0; // Adjust volume if needed
+nedSound.volume = 1.0;
 
 // Load background image
 const backgroundImage = new Image();
@@ -151,67 +151,129 @@ function createNed() {
   });
 }
 
-// -------------------
-// LASER LOGIC 
-// -------------------
+// ----------------------------------------------------
+//   LASER LOGIC (Now 2 lasers at random angles)
+// ----------------------------------------------------
 let lasers = [];
 
-function createLaser() {
-  const laserSize = 8;
-  lasers.push({
-    x: player.x + player.width / 2 - laserSize / 2,
-    y: player.y,
-    width: laserSize,
-    height: laserSize,
-    dx: -4,
-    dy: -4,
-  });
+/**
+ * Create TWO lasers, each at a random angle going *upwards*.
+ * We'll pick a random angle in degrees or radians, then convert to dx/dy.
+ * This version uses a "beam" approach (long rectangle with rotation).
+ */
+function createDoubleLaser() {
+  // We create 2 lasers at random angles
+  for (let i = 0; i < 2; i++) {
+    // angle range: -20 to -160 degrees (in radians) => or pick your own range
+    // Negative means up-left or up-right. We'll do random in -20°..-160°, in radians.
+    const angleDeg = Math.random() * 140 + 20; // from 20°..160°
+    const angleRad = (angleDeg * Math.PI) / 180;
+    const speed = 6; // how fast the beam moves
+
+    // dx, dy from angle (assuming 0° is to the right, 90° up, we want up-left or up-right)
+    // We'll interpret angle from the horizontal. So let's rotate so 90° is up.
+    // Actually let's do an offset: 90° - angleDeg => that might be simpler
+    const realAngle = (90 - angleDeg) * (Math.PI / 180);
+
+    const dx = speed * Math.cos(realAngle);
+    const dy = -speed * Math.sin(realAngle); // negative because we want up
+
+    lasers.push({
+      x: player.x + player.width / 2,
+      y: player.y + player.height / 2, // from player's center
+      width: 3,     // narrower but we'll use length property
+      length: 25,   // how long the beam is
+      angle: realAngle,
+      dx,
+      dy,
+    });
+  }
 }
 
+/**
+ * Move each laser, check collisions with pizzas only. 
+ * The laser is a "beam" we'll draw as a rotated rectangle of length "length" and width "3".
+ */
 function updateLasers() {
   for (let i = 0; i < lasers.length; i++) {
     const laser = lasers[i];
+    // Move the starting reference (x, y)
     laser.x += laser.dx;
     laser.y += laser.dy;
 
+    // If out of bounds, remove it
     if (
-      laser.x < -laser.width ||
-      laser.y < -laser.height ||
-      laser.x > canvas.width + laser.width ||
-      laser.y > canvas.height + laser.height
+      laser.x < -50 ||
+      laser.y < -50 ||
+      laser.x > canvas.width + 50 ||
+      laser.y > canvas.height + 50
     ) {
       lasers.splice(i, 1);
       i--;
       continue;
     }
 
-    let laserHitSomething = false;
+    // Build a bounding box for collisions
+    // The laser is a line-like rectangle. We'll approximate it with a bounding rectangle
+    // from (x, y) to the far end. Because it's angled, we'll do a small bounding rect for collisions.
+    let collisionHappened = false;
+    // We'll sample a few points along the beam or just approximate. For simplicity, let's do one bounding rect
+    // the "far" end of the beam:
+    const endX = laser.x + Math.cos(laser.angle) * laser.length;
+    const endY = laser.y - Math.sin(laser.angle) * laser.length; // minus sin because angle is reversed above
+
+    // bounding box of the beam
+    const minBeamX = Math.min(laser.x, endX);
+    const maxBeamX = Math.max(laser.x, endX);
+    const minBeamY = Math.min(laser.y, endY);
+    const maxBeamY = Math.max(laser.y, endY);
+
     for (let j = 0; j < pizzas.length; j++) {
-      const pizza = pizzas[j];
+      const p = pizzas[j];
+      // Check if bounding boxes overlap
       if (
-        laser.x < pizza.x + pizza.width &&
-        laser.x + laser.width > pizza.x &&
-        laser.y < pizza.y + pizza.height &&
-        laser.y + laser.height > pizza.y
+        maxBeamX >= p.x &&
+        minBeamX <= p.x + p.width &&
+        maxBeamY >= p.y &&
+        minBeamY <= p.y + p.height
       ) {
-        // Laser hits a pizza
+        // They overlap => remove the pizza
         score++;
         pizzas.splice(j, 1);
+        // remove laser for single hit or keep going if you want multi?
         lasers.splice(i, 1);
         i--;
-        laserHitSomething = true;
+        collisionHappened = true;
         break;
       }
     }
-    if (laserHitSomething) break;
+    if (collisionHappened) break;
   }
 }
 
+/**
+ * Draw each laser as a "long rectangle" rotated at "angle".
+ * We'll temporarily rotate the canvas to draw it.
+ */
 function drawLasers() {
-  ctx.fillStyle = "red";
+  ctx.save();
+  ctx.fillStyle = "lime"; // bright green laser
+  ctx.globalAlpha = 0.8;  // slight transparency for effect
+
   lasers.forEach((laser) => {
-    ctx.fillRect(laser.x, laser.y, laser.width, laser.height);
+    ctx.save();
+    // translate to the laser's "base" point
+    ctx.translate(laser.x, laser.y);
+    // rotate
+    ctx.rotate(-laser.angle); 
+    // draw a rectangle of size length x width
+    // (0, 0) is the "start" of the beam
+    ctx.fillRect(0, -laser.width / 2, laser.length, laser.width);
+    ctx.restore();
   });
+
+  ctx.globalAlpha = 1.0;
+  ctx.restore();
 }
 
 // Draw background
@@ -277,6 +339,7 @@ function update() {
       pizza.x <= player.x + player.width;
 
     if (caught) {
+      // +1 to score
       score++;
       pizzas.splice(index, 1);
       player.width += 5;
@@ -289,6 +352,7 @@ function update() {
       const newSound = yummySound.cloneNode(true);
       newSound.play().catch(console.warn);
     } else if (pizza.y > canvas.height) {
+      // missed pizza
       pizzas.splice(index, 1);
       health--;
       if (health <= 0 && !gameOver) {
@@ -331,7 +395,9 @@ function update() {
       ned.x <= player.x + player.width;
 
     if (caughtNed) {
-      // Lose 1 health
+      // +10 points if you catch Ned
+      score += 10;
+
       health--;
       neds.splice(nIndex, 1);
 
@@ -339,8 +405,8 @@ function update() {
       const newNedSound = nedSound.cloneNode(true);
       newNedSound.play().catch(console.warn);
 
-      // Fire diagonal laser that only hits pizzas
-      createLaser();
+      // Fire TWO lasers at random angles
+      createDoubleLaser();
 
       if (health <= 0 && !gameOver) {
         gameOver = true;
@@ -391,7 +457,7 @@ function draw() {
   drawPizzas();
   drawWeights();
   drawNeds();
-  drawLasers(); // lasers above items
+  drawLasers(); // lasers on top
 
   drawHealthOrb();
 
