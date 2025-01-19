@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.1.1-ned-laser-with-ned-sound";
+let version = "v1.1.1-ned-laser-with-ned-sound-drag-move";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -152,7 +152,7 @@ function createNed() {
 }
 
 // -------------------
-// LASER LOGIC (unchanged)
+// LASER LOGIC 
 // -------------------
 let lasers = [];
 
@@ -196,7 +196,7 @@ function updateLasers() {
       ) {
         // Laser hits a pizza
         score++;
-        pizzas.splice(j, 1); 
+        pizzas.splice(j, 1);
         lasers.splice(i, 1);
         i--;
         laserHitSomething = true;
@@ -460,7 +460,137 @@ function movePlayer(direction) {
   }
 }
 
-// DRAG/TOUCH logic (unchanged)...
+// -------------------------------------------------
+// DRAG / TOUCH + MOUSE LOGIC (MOVE & JUMP)
+// -------------------------------------------------
+let dragStartX = 0;
+let dragStartY = 0;
+let isDragging = false;
+let jumpUsed = false;
+let mouseDown = false;
+
+// Helper: keep player.x in range
+function clampPlayerX() {
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.width > canvas.width) {
+    player.x = canvas.width - player.width;
+  }
+}
+
+// Quick jump function (move up 50px, then back down)
+function doJump() {
+  if (player.y >= canvas.height - 150) {
+    player.y -= 50;
+    setTimeout(() => {
+      player.y += 50;
+    }, 200);
+  }
+}
+
+// ------------------- TOUCH EVENTS -------------------
+canvas.addEventListener(
+  "touchstart",
+  function (e) {
+    if (backgroundMusic.paused) {
+      backgroundMusic.play().catch(console.warn);
+    }
+    e.preventDefault();
+    if (gameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    dragStartX = (touch.clientX - rect.left) * scaleX;
+    dragStartY = (touch.clientY - rect.top) * scaleY;
+    isDragging = true;
+    jumpUsed = false;
+  },
+  { passive: false }
+);
+
+canvas.addEventListener(
+  "touchmove",
+  function (e) {
+    e.preventDefault();
+    if (!isDragging || gameOver) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    const currentX = (touch.clientX - rect.left) * scaleX;
+    const currentY = (touch.clientY - rect.top) * scaleY;
+
+    // DRAG UP DETECTION
+    const deltaY = dragStartY - currentY;
+    if (deltaY > 40 && !jumpUsed) {
+      doJump();
+      jumpUsed = true;
+    } else {
+      // Move horizontally, center player on finger
+      player.x = currentX - player.width / 2;
+      clampPlayerX();
+    }
+  },
+  { passive: false }
+);
+
+canvas.addEventListener("touchend", function (e) {
+  isDragging = false;
+});
+
+// ------------------- MOUSE EVENTS -------------------
+canvas.addEventListener("mousedown", function (e) {
+  if (backgroundMusic.paused) {
+    backgroundMusic.play().catch(console.warn);
+  }
+  if (gameOver) return;
+
+  mouseDown = true;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  dragStartX = (e.clientX - rect.left) * scaleX;
+  dragStartY = (e.clientY - rect.top) * scaleY;
+  isDragging = true;
+  jumpUsed = false;
+});
+
+canvas.addEventListener("mousemove", function (e) {
+  if (!mouseDown || !isDragging || gameOver) return;
+
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const currentX = (e.clientX - rect.left) * scaleX;
+  const currentY = (e.clientY - rect.top) * scaleY;
+
+  const deltaY = dragStartY - currentY;
+  if (deltaY > 40 && !jumpUsed) {
+    doJump();
+    jumpUsed = true;
+  } else {
+    player.x = currentX - player.width / 2;
+    clampPlayerX();
+  }
+});
+
+canvas.addEventListener("mouseup", function () {
+  mouseDown = false;
+  isDragging = false;
+});
+
+canvas.addEventListener("mouseleave", function () {
+  mouseDown = false;
+  isDragging = false;
+});
+
+// -------------------------------------------------
 
 // RESTART
 restartBtn.addEventListener("click", () => {
