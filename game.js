@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.0.6-harder-highscore";
+let version = "v1.0.7-harder-change weight";
 
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
@@ -47,7 +47,7 @@ yummySound.volume = 1.0;
 
 // WEIGHT SOUND
 const weightSound = new Audio("./weightlifting.mp3");
-weightSound.volume = 1.0;
+weightSound.volume = 0.8;
 
 // GAME OVER SOUND
 const gameOverSound = new Audio("./game_over.mp3");
@@ -83,8 +83,8 @@ let player = {
 };
 
 // Health logic
-let health = 2;
-const maxHealth = 4;
+let health = 3;
+const maxHealth = 3;
 
 // Pizzas array
 let pizzas = [];
@@ -230,8 +230,8 @@ function update() {
       // Remove weight from array
       weights.splice(wIndex, 1);
 
-      // Shrink player by 10px
-      player.width -= 10;
+      // *** CHANGED: Instead of -10px, shrink player by 33% (round up)
+      player.width = Math.ceil(player.width * (2 / 3));
       if (player.width < 10) {
         player.width = 10;
       }
@@ -296,11 +296,7 @@ function draw() {
 
   // 4) Display High Score in top-right corner
   const highScoreDisplay = `High Score: ${highScore} (${highScoreInitials})`;
-  ctx.fillText(
-    highScoreDisplay,
-    canvas.width - 250, // adjust as needed
-    30
-  );
+  ctx.fillText(highScoreDisplay, canvas.width - 250, 30);
 
   // Draw player & items
   drawPlayer();
