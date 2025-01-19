@@ -1,0 +1,71 @@
+from PIL import Image
+
+# Create a new blank 64×64 image (RGB) with a black background.
+img = Image.new('RGB', (64, 64), (0, 0, 0))
+pixels = img.load()
+
+# Define some colors (R, G, B).
+BLACK    = (0,   0,   0  )
+DARK_GREY= (50,  50,  50 )
+PURPLE   = (128, 0,   128)
+SKIN     = (239, 208, 207)
+GOLD     = (255, 215, 0  )
+RED      = (255, 0,   0  )
+BROWN    = (139, 69,  19 )
+WHITE    = (255, 255, 255)
+
+# 1) Draw Ned’s face (a skin-toned rectangle).
+face_x_start, face_x_end = 24, 40
+face_y_start, face_y_end = 8,  24
+for y in range(face_y_start, face_y_end):
+    for x in range(face_x_start, face_x_end):
+        pixels[x, y] = SKIN
+
+# 2) Add glowing red eyes.
+#    For simplicity, each eye is a 2×2 block.
+for y in range(12, 14):  # Eye row
+    for x in range(28, 30):  # Left eye
+        pixels[x, y] = RED
+    for x in range(35, 37):  # Right eye
+        pixels[x, y] = RED
+
+# 3) Add a small dark mouth.
+for y in range(18, 20):
+    for x in range(28, 36):
+        pixels[x, y] = DARK_GREY
+
+# 4) Draw a wide purple hat above the face.
+hat_x_start, hat_x_end = 20, 44
+hat_y_start, hat_y_end = 0,  8
+for y in range(hat_y_start, hat_y_end):
+    for x in range(hat_x_start, hat_x_end):
+        pixels[x, y] = PURPLE
+
+# 5) Draw the sorcerer’s robe (purple blocks below the face).
+robe_x_start, robe_x_end = 16, 48
+robe_y_start, robe_y_end = face_y_end, 64
+for y in range(robe_y_start, robe_y_end):
+    for x in range(robe_x_start, robe_x_end):
+        pixels[x, y] = PURPLE
+
+# 6) Draw a brown staff to the left of the body.
+for y in range(8, 64):
+    for x in range(10, 14):
+        pixels[x, y] = BROWN
+
+# 7) Put a red gem at the top of the staff.
+for y in range(4, 8):
+    for x in range(10, 14):
+        pixels[x, y] = RED
+
+# 8) Add golden trim around the edges of the robe.
+for x in range(robe_x_start, robe_x_end):
+    pixels[x, robe_y_start] = GOLD       # Top horizontal trim
+    pixels[x, 63]            = GOLD       # Bottom horizontal trim
+for y in range(robe_y_start, robe_y_end):
+    pixels[robe_x_start, y]       = GOLD  # Left vertical trim
+    pixels[robe_x_end - 1, y]     = GOLD  # Right vertical trim
+
+# Save and show the image.
+img.save('evil_sorcerer_ned.png')
+img.show()
