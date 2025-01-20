@@ -1,6 +1,11 @@
 // 1) Define your version somewhere near the top:
 let version = "v1.2.0-ned-double-lasers-random-angles-better-laser";
 
+let goldenPizzas = [];
+let pizzaFeverActive = false;
+let pizzaFeverTimer = 0;
+const pizzaFeverDuration = 600; // ~10 seconds if your game loop is ~60 FPS
+
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const restartBtn = document.getElementById("restartButton");
@@ -107,6 +112,19 @@ weightImage.src = "./weightlifting.png";
 
 const nedImage = new Image();
 nedImage.src = "./evil_ned.webp";
+
+const goldenPizzaImage = new Image();
+goldenPizzaImage.src = "./golden_pizza.webp";
+function createGoldenPizza() {
+  const size = 50; // A bit larger than normal pizza
+  goldenPizzas.push({
+    x: Math.random() * (canvas.width - size),
+    y: 0,
+    width: size,
+    height: size,
+    speed: 2 + Math.random(), // maybe a bit faster
+  });
+}
 
 /** 
  * GET EXISTING HIGH SCORE FROM LOCAL STORAGE 
@@ -305,6 +323,12 @@ function drawPizzas() {
   });
 }
 
+function drawGoldenPizzas() {
+  goldenPizzas.forEach((gp) => {
+    ctx.drawImage(goldenPizzaImage, gp.x, gp.y, gp.width, gp.height);
+  });
+}
+
 // Draw weights
 function drawWeights() {
   weights.forEach((weight) => {
@@ -340,7 +364,8 @@ function update() {
 
     if (caught) {
       // +1 to score
-      score++;
+      const pointsToAdd = pizzaFeverActive ? 5 : 1;
+      score += pointsToAdd;
       pizzas.splice(index, 1);
       player.width += 5;
       if (player.x + player.width > canvas.width) {
@@ -419,6 +444,43 @@ function update() {
 
   // Update lasers
   updateLasers();
+  // Update golden pizzas
+goldenPizzas.forEach((gp, index) => {
+  gp.y += gp.speed;
+  
+  // Check collision with player
+  const caughtGolden =
+    gp.y + gp.height >= player.y &&
+    gp.x + gp.width >= player.x &&
+    gp.x <= player.x + player.width;
+
+  if (caughtGolden) {
+    // Give some base points for catching Golden Pizza
+    score += 5;
+
+    // Trigger Pizza Fever
+    pizzaFeverActive = true;
+    pizzaFeverTimer = pizzaFeverDuration;
+
+    // Remove the golden pizza
+    goldenPizzas.splice(index, 1);
+
+    // Optional: play a special "power up" sound or clone an existing yummySound
+    const goldenSound = yummySound.cloneNode(true);
+    goldenSound.play().catch(console.warn);
+
+  } else if (gp.y > canvas.height) {
+    // Missed it
+    goldenPizzas.splice(index, 1);
+  }
+});
+// Handle Pizza Fever timer
+if (pizzaFeverActive) {
+  pizzaFeverTimer--;
+  if (pizzaFeverTimer <= 0) {
+    pizzaFeverActive = false;
+  }
+}
 }
 
 /** Called once if gameOver = true */
@@ -455,12 +517,21 @@ function draw() {
   // Draw game elements
   drawPlayer();
   drawPizzas();
+  drawGoldenPizzas();
   drawWeights();
   drawNeds();
   drawLasers(); // lasers on top
 
   drawHealthOrb();
+  // If Pizza Fever is active, draw something fancy
+  if (pizzaFeverActive) {
+    ctx.fillStyle = "rgba(255, 215, 0, 0.3)"; // golden overlay
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    ctx.fillStyle = "#FFD700";
+    ctx.font = "40px Arial";
+    ctx.fillText("PIZZA FEVER!", canvas.width / 2 - 100, 100);
+  }
   if (gameOver) {
     ctx.fillStyle = "#fff";
     ctx.font = "40px Arial";
@@ -676,6 +747,7 @@ function gameLoop() {
 setInterval(createPizza, 1000);
 setInterval(createWeight, 3000);
 setInterval(createNed, 5000);
+setInterval(createGoldenPizza, 15000); 
 
 // Start
 gameLoop();
