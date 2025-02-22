@@ -601,23 +601,22 @@ function drawWeights() {
 // Draw neds with centered text
 function drawNeds() {
   neds.forEach((ned) => {
+    // Draw the wizard
     ctx.drawImage(nedImage, ned.x, ned.y, ned.width, ned.height);
 
+    // Draw the label
+    ctx.save();
     ctx.fillStyle = "#fff";
     ctx.font = "16px Arial";
-    const text = "Ned";
-    const textWidth = ctx.measureText(text).width;
-    
-    // Center horizontally:
-    const textX = ned.x + (ned.width - textWidth) / 2;
-    // Option A: Center the label vertically on the sprite
-    // const textY = ned.y + (ned.height / 2) + 8;
+    ctx.textAlign = "center";      // horizontally center on the given x
+    ctx.textBaseline = "bottom";   // or "top", "middle"—whatever you prefer
 
-    // Option B: Put the label slightly above the sprite's head
-    // (just adjust to your preference)
-    const textY = ned.y - 5;
+    // If you want the text *just* above the wizard, pick a small offset:
+    const labelX = ned.x + ned.width / 2; 
+    const labelY = ned.y - 2; // a couple pixels above the top edge
+    ctx.fillText("Ned", labelX, labelY);
 
-    ctx.fillText(text, textX, textY);
+    ctx.restore();
   });
 }
 
@@ -881,15 +880,22 @@ function draw() {
     ctx.strokeText("Fong Bong Pizza Man", canvas.width / 2, 80); // Moved down to avoid high score
     ctx.fillText("Fong Bong Pizza Man", canvas.width / 2, 80);
 
+    // Example near the top of the screen, centered horizontally
     ctx.font = "bold 24px 'Arial'";
     ctx.fillStyle = "#FFFFFF";
     ctx.strokeStyle = "#000000";
     ctx.lineWidth = 3;
+
+    // Score on the left
     ctx.textAlign = "left";
     ctx.strokeText(`Score: ${score}`, 20, 40);
     ctx.fillText(`Score: ${score}`, 20, 40);
+
+    // Stage in the center
     ctx.strokeText(`Stage: ${currentStage}`, 20, 70);
     ctx.fillText(`Stage: ${currentStage}`, 20, 70);
+
+
 
     ctx.textAlign = "right";
     const highScoreDisplay = `High Score: ${highScore} (${highScoreInitials})`;
@@ -915,23 +921,36 @@ function draw() {
       ctx.fillStyle = "#FFD700";
       ctx.font = "50px Arial";
       const scale = 1 + Math.sin(Date.now() * 0.01) * 0.1;
-      
+    
       ctx.save();
-      // Translate to the true center of the screen:
+      // Center the text (both horizontally and vertically):
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+    
+      // Move the origin to the canvas center
       ctx.translate(canvas.width / 2, canvas.height / 2);
+    
+      // Apply the pulsing scale
       ctx.scale(scale, scale);
-      // Now draw the text so its center lines up with our translate:
-      ctx.fillText("PIZZA FEVER!", -ctx.measureText("PIZZA FEVER!").width / 2, 0);
+    
+      // Draw the text so (0,0) is its center
+      ctx.fillText("PIZZA FEVER!", 0, 0);
       ctx.restore();
     
+      // Fever particles, etc.
       drawFeverParticles();
     }
+    
 
     if (stageTransitionTimer > 0) {
       ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
       ctx.fillStyle = "#fff";
       ctx.font = "50px Arial";
+      ctx.textAlign = "center"; // Center the text horizontally
+      ctx.textBaseline = "middle"; // Center the text vertically
+    
       ctx.fillText(`Stage ${currentStage}`, canvas.width / 2, canvas.height / 2);
     }
 
