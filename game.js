@@ -1,5 +1,5 @@
 // 1) Define your version somewhere near the top:
-let version = "v1.6.0-extended-stages-spoiled-pizza";
+let version = "v1.6.5-fixed-pizzafever-ned-healthbar";
 
 let goldenPizzas = [];
 let pizzaFeverActive = false;
@@ -9,6 +9,23 @@ const pizzaFeverDuration = 600; // ~10 seconds if your game loop is ~60 FPS
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const restartBtn = document.getElementById("restartButton");
+const beginBtn = document.createElement("button");
+beginBtn.id = "beginButton";
+beginBtn.textContent = "Begin Game";
+beginBtn.style.position = "absolute";
+beginBtn.style.left = "50%";
+beginBtn.style.top = "50%";
+beginBtn.style.transform = "translate(-50%, -50%)";
+beginBtn.style.padding = "15px 30px";
+beginBtn.style.fontSize = "24px";
+beginBtn.style.fontFamily = "'Arial', sans-serif";
+beginBtn.style.backgroundColor = "#FFD700";
+beginBtn.style.color = "#000";
+beginBtn.style.border = "3px solid #FF4500";
+beginBtn.style.borderRadius = "10px";
+beginBtn.style.cursor = "pointer";
+beginBtn.style.display = "block";
+document.body.appendChild(beginBtn);
 
 canvas.width = 800;
 canvas.height = 600;
@@ -63,7 +80,7 @@ const nedSound = new Audio("./ned.mp3");
 nedSound.volume = 1.0;
 
 // SPOILED PIZZA SOUND
-const spoiledSound = new Audio("./spoiled.mp3"); // Assume a sound file for spoiled pizza
+const spoiledSound = new Audio("./spoiled.mp3"); // Assume a sound file exists
 spoiledSound.volume = 0.8;
 
 // Load background image
@@ -100,7 +117,7 @@ const goldenPizzaImage = new Image();
 goldenPizzaImage.src = "./golden_pizza.webp";
 
 const spoiledPizzaImage = new Image();
-spoiledPizzaImage.src = "./spoiled_pizza.webp"; // Assume an image for spoiled pizza
+spoiledPizzaImage.src = "./spoiled_pizza.webp"; // Assume an image exists
 
 // Player object
 let player = {
@@ -119,13 +136,14 @@ const maxHealth = 3;
 let pizzas = [];
 let weights = [];
 let neds = [];
-let spoiledPizzas = []; // New array for spoiled pizzas
+let spoiledPizzas = [];
 let score = 0;
 let gameOver = false;
+let gameStarted = false;
 
 // Stage system
 let currentStage = 1;
-const stageThresholds = [50, 150, 300, 500, 750, 1000, 1500]; // Stages up to 7: 1->2 at 50, 2->3 at 150, 3->4 at 300, 4->5 at 500, 5->6 at 750, 6->7 at 1000, 7->8 at 1500
+const stageThresholds = [50, 150, 300, 500, 750, 1000, 1500];
 let stageTransitionTimer = 0;
 const stageTransitionDuration = 120;
 
@@ -135,6 +153,9 @@ const nedLaserDuration = 60;
 
 // Pizza Fever animation particles
 let feverParticles = [];
+
+// Declare interval variables at the top
+let pizzaInterval, weightInterval, nedInterval, goldenPizzaInterval, spoiledPizzaInterval;
 
 function createGoldenPizza() {
   const size = 50;
@@ -192,14 +213,14 @@ function createNed() {
 
 /** Create a new spoiled pizza (Stage 5+) */
 function createSpoiledPizza() {
-  if (currentStage < 5) return; // Only spawn in Stage 5+
+  if (currentStage < 5) return;
   const size = 40;
   spoiledPizzas.push({
     x: Math.random() * (canvas.width - size),
     y: 0,
     width: size,
     height: size,
-    speed: 2 + Math.random() + currentStage * 0.7, // Faster than regular pizzas
+    speed: 2 + Math.random() + currentStage * 0.7,
   });
 }
 
@@ -464,7 +485,7 @@ function drawNedLasers() {
     gradient.addColorStop(0.8, "rgba(186, 85, 211, 0.7)");
     gradient.addColorStop(1, "rgba(186, 85, 211, 0)");
 
-    const flicker = Math.sin(laser.age * 0.4 + laser.ficker) * 4;
+    const flicker = Math.sin(laser.age * 0.4 + laser.flicker) * 4;
     const beamWidth = laser.width + flicker;
 
     ctx.fillStyle = gradient;
@@ -505,7 +526,7 @@ function updateFeverParticles() {
     const p = feverParticles[i];
     p.x += p.dx;
     p.y += p.dy;
-    p.dy += 0.05; // Gravity effect
+    p.dy += 0.05;
     p.life--;
     p.rotation += p.spin;
     if (p.life <= 0 || p.y > canvas.height + 20) {
@@ -577,32 +598,80 @@ function drawWeights() {
   });
 }
 
-// Draw neds
+// Draw neds with centered text
 function drawNeds() {
   neds.forEach((ned) => {
     ctx.drawImage(nedImage, ned.x, ned.y, ned.width, ned.height);
 
     ctx.fillStyle = "#fff";
     ctx.font = "16px Arial";
-    let textWidth = ctx.measureText("Ned").width;
-    let textX = ned.x + (ned.width - textWidth) / 2;
-    let textY = ned.y - 5;
-    ctx.fillText("Ned", textX, textY);
+    const text = "Ned";
+    const textWidth = ctx.measureText(text).width;
+    
+    // Center horizontally:
+    const textX = ned.x + (ned.width - textWidth) / 2;
+    // Option A: Center the label vertically on the sprite
+    // const textY = ned.y + (ned.height / 2) + 8;
+
+    // Option B: Put the label slightly above the sprite's head
+    // (just adjust to your preference)
+    const textY = ned.y - 5;
+
+    ctx.fillText(text, textX, textY);
   });
 }
 
-// Draw spoiled pizzas
+// Draw spoiled pizzas with subtle warning
 function drawSpoiledPizzas() {
   spoiledPizzas.forEach((sp) => {
+    ctx.save();
+    ctx.globalAlpha = 0.8 + Math.sin(Date.now() * 0.005) * 0.2;
     ctx.drawImage(spoiledPizzaImage, sp.x, sp.y, sp.width, sp.height);
+    ctx.restore();
   });
+}
+
+// Draw pizza-themed health bar
+function drawHealthBar() {
+  const pizzaX = 20;
+  const pizzaY = canvas.height - 120; // Moved up to make room for version text
+  const pizzaRadius = 40;
+  const crustWidth = 10;
+
+  ctx.beginPath();
+  ctx.arc(pizzaX + pizzaRadius, pizzaY + pizzaRadius, pizzaRadius, 0, 2 * Math.PI);
+  ctx.fillStyle = "#DAA520"; // Golden crust
+  ctx.fill();
+
+  const fillPercent = health / maxHealth;
+  const startAngle = -Math.PI / 2;
+  const endAngle = startAngle + fillPercent * 2 * Math.PI;
+  ctx.beginPath();
+  ctx.moveTo(pizzaX + pizzaRadius, pizzaY + pizzaRadius);
+  ctx.arc(pizzaX + pizzaRadius, pizzaY + pizzaRadius, pizzaRadius - crustWidth, startAngle, endAngle);
+  ctx.closePath();
+  ctx.fillStyle = "#FF4500"; // Tomato sauce
+  ctx.fill();
+
+  if (health > 0) {
+    const toppingCount = Math.ceil(health * 3); // Up to 9 pepperonis
+    for (let i = 0; i < toppingCount; i++) {
+      const angle = (i / (maxHealth * 3)) * 2 * Math.PI - Math.PI / 2;
+      const radiusOffset = (pizzaRadius - crustWidth - 5) * (1 - (i % 3) * 0.2); // Staggered radii
+      const topX = pizzaX + pizzaRadius + Math.cos(angle) * radiusOffset;
+      const topY = pizzaY + pizzaRadius + Math.sin(angle) * radiusOffset;
+      ctx.beginPath();
+      ctx.arc(topX, topY, 5, 0, 2 * Math.PI);
+      ctx.fillStyle = "#8B0000"; // Pepperoni
+      ctx.fill();
+    }
+  }
 }
 
 /** Update game state */
 function update() {
-  if (gameOver) return;
+  if (!gameStarted || gameOver) return;
 
-  // Stage transition logic
   if (stageTransitionTimer > 0) {
     stageTransitionTimer--;
     return;
@@ -638,7 +707,6 @@ function update() {
     player.speed += 10;
   }
 
-  // Update pizzas
   pizzas.forEach((pizza, index) => {
     pizza.y += pizza.speed;
     const caught =
@@ -668,7 +736,6 @@ function update() {
     }
   });
 
-  // Update weights
   weights.forEach((weight, wIndex) => {
     weight.y += weight.speed;
     const caughtWeight =
@@ -692,7 +759,6 @@ function update() {
     }
   });
 
-  // Update neds
   neds.forEach((ned, nIndex) => {
     ned.y += ned.speed;
     const caughtNed =
@@ -720,7 +786,6 @@ function update() {
     }
   });
 
-  // Update spoiled pizzas
   spoiledPizzas.forEach((sp, spIndex) => {
     sp.y += sp.speed;
     const caughtSpoiled =
@@ -729,11 +794,11 @@ function update() {
       sp.x <= player.x + player.width;
 
     if (caughtSpoiled) {
-      score -= 5 + currentStage; // Lose points
-      if (score < 0) score = 0; // Prevent negative score
-      health -= 2; // Double health damage
+      score -= currentStage;
+      if (score < 0) score = 0;
+      health--;
       spoiledPizzas.splice(spIndex, 1);
-      player.width -= 10; // Shrink player
+      player.width -= 5;
       if (player.width < 10) player.width = 10;
       if (player.x + player.width > canvas.width) {
         player.x = canvas.width - player.width;
@@ -754,7 +819,6 @@ function update() {
   updateLasers();
   updateNedLasers();
 
-  // Update golden pizzas
   goldenPizzas.forEach((gp, index) => {
     gp.y += gp.speed;
     const caughtGolden =
@@ -774,7 +838,6 @@ function update() {
     }
   });
 
-  // Handle Pizza Fever
   if (pizzaFeverActive) {
     pizzaFeverTimer--;
     if (pizzaFeverTimer % 10 === 0) createFeverParticles();
@@ -789,6 +852,8 @@ function update() {
 /** Called once if gameOver = true */
 function onGameOver() {
   playGameOverSound();
+  backgroundMusic.pause(); // Stop music on game over
+  clearSpawnIntervals(); // Stop spawning objects
 
   if (score > highScore) {
     let initials = prompt("New High Score! Enter your initials:");
@@ -806,93 +871,100 @@ function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawBackground();
 
-  // UI
-  ctx.fillStyle = "#fff";
-  ctx.font = "30px Arial";
-  ctx.fillText("Fong Bong Pizza Man", canvas.width / 2 - 150, 40);
+  if (gameStarted) {
+    // Adjusted text styling and positioning
+    ctx.font = "bold 36px 'Arial'";
+    ctx.fillStyle = "#FFD700"; // Bright yellow
+    ctx.strokeStyle = "#FF4500"; // Orange outline
+    ctx.lineWidth = 4;
+    ctx.textAlign = "center";
+    ctx.strokeText("Fong Bong Pizza Man", canvas.width / 2, 80); // Moved down to avoid high score
+    ctx.fillText("Fong Bong Pizza Man", canvas.width / 2, 80);
 
-  ctx.font = "20px Arial";
-  ctx.fillText(`Score: ${score}`, 10, 30);
-  ctx.fillText(`Stage: ${currentStage}`, 10, 60);
-  const highScoreDisplay = `High Score: ${highScore} (${highScoreInitials})`;
-  ctx.fillText(highScoreDisplay, canvas.width - 250, 30);
+    ctx.font = "bold 24px 'Arial'";
+    ctx.fillStyle = "#FFFFFF";
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 3;
+    ctx.textAlign = "left";
+    ctx.strokeText(`Score: ${score}`, 20, 40);
+    ctx.fillText(`Score: ${score}`, 20, 40);
+    ctx.strokeText(`Stage: ${currentStage}`, 20, 70);
+    ctx.fillText(`Stage: ${currentStage}`, 20, 70);
 
-  // Draw game elements
-  drawPlayer();
-  drawPizzas();
-  drawGoldenPizzas();
-  drawWeights();
-  drawNeds();
-  drawSpoiledPizzas();
-  drawLasers();
-  drawNedLasers();
+    ctx.textAlign = "right";
+    const highScoreDisplay = `High Score: ${highScore} (${highScoreInitials})`;
+    ctx.strokeText(highScoreDisplay, canvas.width - 20, 30); // Moved up to avoid title
+    ctx.fillText(highScoreDisplay, canvas.width - 20, 30);
 
-  drawHealthOrb();
+    drawPlayer();
+    drawPizzas();
+    drawGoldenPizzas();
+    drawWeights();
+    drawNeds();
+    drawSpoiledPizzas();
+    drawLasers();
+    drawNedLasers();
 
-  // Pizza Fever animation
-  if (pizzaFeverActive) {
-    const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 0.3;
-    ctx.fillStyle = `rgba(255, 215, 0, ${pulse})`;
+    drawHealthBar();
+
+    if (pizzaFeverActive) {
+      const pulse = Math.sin(Date.now() * 0.005) * 0.1 + 0.3;
+      ctx.fillStyle = `rgba(255, 215, 0, ${pulse})`;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+      ctx.fillStyle = "#FFD700";
+      ctx.font = "50px Arial";
+      const scale = 1 + Math.sin(Date.now() * 0.01) * 0.1;
+      
+      ctx.save();
+      // Translate to the true center of the screen:
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.scale(scale, scale);
+      // Now draw the text so its center lines up with our translate:
+      ctx.fillText("PIZZA FEVER!", -ctx.measureText("PIZZA FEVER!").width / 2, 0);
+      ctx.restore();
+    
+      drawFeverParticles();
+    }
+
+    if (stageTransitionTimer > 0) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.font = "50px Arial";
+      ctx.fillText(`Stage ${currentStage}`, canvas.width / 2, canvas.height / 2);
+    }
+
+    if (gameOver) {
+      // Draw "Game Over" above game layer and button
+      ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; // Dark overlay for prominence
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.font = "40px Arial";
+      ctx.textAlign = "center";
+      ctx.fillText("Game Over!", canvas.width / 2, canvas.height / 2 - 40); // Above button
+      restartBtn.style.display = "block";
+    }
+  } else {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    ctx.font = "bold 48px 'Arial'";
     ctx.fillStyle = "#FFD700";
-    ctx.font = "50px Arial";
-    const scale = 1 + Math.sin(Date.now() * 0.01) * 0.1;
-    ctx.save();
-    ctx.translate(canvas.width / 2, 120);
-    ctx.scale(scale, scale);
-    ctx.fillText("PIZZA FEVER!", -ctx.measureText("PIZZA FEVER!").width / 2, 0);
-    ctx.restore();
-
-    drawFeverParticles();
+    ctx.strokeStyle = "#FF4500";
+    ctx.lineWidth = 4;
+    ctx.textAlign = "center";
+    ctx.strokeText("Fong Bong Pizza Man", canvas.width / 2, canvas.height / 2 - 50);
+    ctx.fillText("Fong Bong Pizza Man", canvas.width / 2, canvas.height / 2 - 50);
   }
 
-  // Stage transition screen
-  if (stageTransitionTimer > 0) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#fff";
-    ctx.font = "50px Arial";
-    ctx.fillText(`Stage ${currentStage}`, canvas.width / 2 - 100, canvas.height / 2);
-  }
-
-  if (gameOver) {
-    ctx.fillStyle = "#fff";
-    ctx.font = "40px Arial";
-    ctx.fillText("Game Over!", canvas.width / 2 - 100, canvas.height / 2);
-    restartBtn.style.display = "block";
-  }
-
-  // Version
-  ctx.font = "14px Arial";
-  ctx.fillText(`Version: ${version}`, 10, canvas.height - 10);
-}
-
-function drawHealthOrb() {
-  const orbX = 70;
-  const orbY = canvas.height - 70;
-  const radius = 40;
-
-  ctx.beginPath();
-  ctx.arc(orbX, orbY, radius, 0, 2 * Math.PI);
-  ctx.fillStyle = "#333";
-  ctx.fill();
-
-  const fillPercent = health / maxHealth;
-  const startAngle = -Math.PI / 2;
-  const endAngle = startAngle + fillPercent * 2 * Math.PI;
-  ctx.beginPath();
-  ctx.moveTo(orbX, orbY);
-  ctx.arc(orbX, orbY, radius, startAngle, endAngle, false);
-  ctx.closePath();
-  ctx.fillStyle = "red";
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(orbX, orbY, radius, 0, 2 * Math.PI);
-  ctx.strokeStyle = "#fff";
+  // Version text moved to the bottom of the screen
+  ctx.font = "bold 14px 'Arial'";
+  ctx.fillStyle = "#FFFFFF";
+  ctx.strokeStyle = "#000000";
   ctx.lineWidth = 2;
-  ctx.stroke();
+  ctx.textAlign = "left";
+  ctx.strokeText(`Version: ${version}`, 10, canvas.height - 10); // At the very bottom
+  ctx.fillText(`Version: ${version}`, 10, canvas.height - 10);
 }
 
 /** Play the game over sound once */
@@ -903,9 +975,10 @@ function playGameOverSound() {
   });
 }
 
-// Keyboard movement (arrows)
+/** Keyboard movement (arrows) */
 document.addEventListener("keydown", (e) => {
-  if (backgroundMusic.paused) {
+  if (!gameStarted) return;
+  if (backgroundMusic.paused && !gameOver) {
     backgroundMusic.play().catch(console.warn);
   }
   if (e.key === "ArrowLeft") movePlayer("left");
@@ -949,7 +1022,8 @@ function doJump() {
 canvas.addEventListener(
   "touchstart",
   function (e) {
-    if (backgroundMusic.paused) {
+    if (!gameStarted) return;
+    if (backgroundMusic.paused && !gameOver) {
       backgroundMusic.play().catch(console.warn);
     }
     e.preventDefault();
@@ -999,7 +1073,8 @@ canvas.addEventListener("touchend", function (e) {
 });
 
 canvas.addEventListener("mousedown", function (e) {
-  if (backgroundMusic.paused) {
+  if (!gameStarted) return;
+  if (backgroundMusic.paused && !gameOver) {
     backgroundMusic.play().catch(console.warn);
   }
   if (gameOver || stageTransitionTimer > 0) return;
@@ -1052,32 +1127,43 @@ restartBtn.addEventListener("click", () => {
   location.reload();
 });
 
-// Main loop
-function gameLoop() {
-  update();
-  draw();
-  if (!gameOver) {
-    requestAnimationFrame(gameLoop);
-  }
-}
-
-// Spawning intervals (adjusted per stage)
+// Spawning intervals
 function setSpawnIntervals() {
-  clearInterval(pizzaInterval);
-  clearInterval(weightInterval);
-  clearInterval(nedInterval);
-  clearInterval(goldenPizzaInterval);
-  clearInterval(spoiledPizzaInterval);
+  if (pizzaInterval) clearInterval(pizzaInterval);
+  if (weightInterval) clearInterval(weightInterval);
+  if (nedInterval) clearInterval(nedInterval);
+  if (goldenPizzaInterval) clearInterval(goldenPizzaInterval);
+  if (spoiledPizzaInterval) clearInterval(spoiledPizzaInterval);
 
   pizzaInterval = setInterval(createPizza, 1000 / (currentStage * 1.2));
   weightInterval = setInterval(createWeight, 3000 / (currentStage * 0.9));
   nedInterval = setInterval(createNed, 5000 / (currentStage * 0.95));
   goldenPizzaInterval = setInterval(createGoldenPizza, 15000 / (currentStage * 1.1));
-  spoiledPizzaInterval = setInterval(createSpoiledPizza, 4000 / (currentStage * 0.8)); // Spoiled pizzas spawn more frequently as stage increases
+  spoiledPizzaInterval = setInterval(createSpoiledPizza, 8000 / (currentStage * 0.9));
 }
 
-let pizzaInterval, weightInterval, nedInterval, goldenPizzaInterval, spoiledPizzaInterval;
-setSpawnIntervals();
+function clearSpawnIntervals() {
+  if (pizzaInterval) clearInterval(pizzaInterval);
+  if (weightInterval) clearInterval(weightInterval);
+  if (nedInterval) clearInterval(nedInterval);
+  if (goldenPizzaInterval) clearInterval(goldenPizzaInterval);
+  if (spoiledPizzaInterval) clearInterval(spoiledPizzaInterval);
+}
 
-// Start
+// Main loop
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Start button logic
+beginBtn.addEventListener("click", () => {
+  gameStarted = true;
+  beginBtn.style.display = "none";
+  backgroundMusic.play().catch(console.warn);
+  setSpawnIntervals();
+});
+
+// Start the game loop
 gameLoop();
